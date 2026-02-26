@@ -28,22 +28,29 @@ PickBetter 浏览器扩展目前具备基础的页面信息收集和展示功能
 - 不实现性能优化(防抖、节流、虚拟滚动等)
 - 不生成选择器字符串或提取复杂元素信息
 - 不实现多选功能
-- 不添加 Tooltip 信息提示或状态指示器(可选的后续增强)
+- 信息标签不可交互(纯展示,无点击/复制功能)
+- 不使用过渡动画(即时响应,无延迟)
 
 ## Decisions
 
-### 1. 高亮实现方式: 内联 style 而非 CSS 类
+### 1. 高亮实现方式: 覆盖层 DOM 元素而非内联 style
 
-**决策**: 使用 `element.style.outline` 直接设置内联样式,不添加 CSS 类。
+**决策**: 使用独立的半透明覆盖层 DOM 元素创建高亮效果,不直接修改目标元素样式。
 
 **理由**:
-- **简单直接**: 无需注入额外的样式表,避免与页面样式冲突
-- **优先级最高**: 内联样式天然优先级高,配合 `!important` 确保不被覆盖
-- **易于清理**: 直接设置空字符串即可移除样式
-- **性能好**: 无需查询样式表,直接修改 DOM
+- **完全隔离**: 不污染目标元素的样式,无 CSS 优先级冲突
+- **扩展性强**: 可以添加信息标签,显示元素元信息
+- **易于清理**: 直接删除覆盖层元素即可,无需记住每个修改的属性
+- **专业外观**: 类似 DevTools 的视觉效果,半透明蓝色背景 + 边框
+
+**覆盖层结构**:
+- 高亮层: `position: absolute`, `pointer-events: none`, 蓝色半透明背景
+- 信息标签: `position: absolute`, `pointer-events: none`, 显示元素信息
+- 容器: 添加到 `document.body`,使用超高 `z-index: 2147483640`
 
 **替代方案**:
-- CSS 类: 需要注入样式表,可能与页面样式冲突,清理时需要移除类名
+- 内联样式: 会污染元素样式,可能与页面 `!important` 规则冲突
+- CSS 类: 需要注入样式表,清理时需要移除类名
 
 ### 2. 事件监听: 捕获阶段而非冒泡阶段
 
@@ -94,20 +101,53 @@ PickBetter 浏览器扩展目前具备基础的页面信息收集和展示功能
 **替代方案**:
 - 函数式实现: 也可以,但类更利于状态管理
 
-### 6. 样式规范: outline 而非 border
+### 6. 信息标签设计: 简洁核心信息
 
-**决策**: 使用 `outline` 属性创建高亮边框,不使用 `border`。
+**决策**: 在覆盖层旁显示简洁的元素信息标签,完全不可交互。
+
+**显示内容**:
+- 第一行(必选): `{tagName}  {width}x{height}` (使用小写 x)
+- 第二行(可选): 如果有 ID 显示 `#{id}`,如果有类名显示 `.{className}`
+
+**视觉风格**:
+- 背景: `#1e1e1e` (深灰,类似 DevTools)
+- 标签名: `#569CD6` (蓝色)
+- ID: `#DCDCAA` (黄色)
+- 类名: `#CE9178` (橙色)
+- 尺寸: `#b5cea8` (浅绿)
+- 字体: `'SF Mono', 'Consolas', monospace`
+- 字号: `12px`
+- 圆角: `3px`
+- 内边距: `6px 10px`
+- 无过渡动画(即时响应)
 
 **理由**:
-- **不影响布局**: outline 不占用盒模型空间,不会影响元素布局
-- **性能好**: 浏览器优化了 outline 的渲染
-- **标准做法**: DevTools 等工具也使用 outline
+- **信息丰富**: 用户可以快速了解元素类型和尺寸
+- **不干扰**: 不可交互,不影响元素选择
+- **专业感**: 类似 DevTools 的视觉风格
 
-**实现细节**:
-```typescript
-element.style.outline = '2px solid #2196F3';
-element.style.outlineOffset = '-2px'; // 负值向内偏移,避免遮挡
-```
+### 7. 智能定位算法
+
+**决策**: 信息标签使用智能定位,在 6 个候选位置中选择最佳位置。
+
+**候选位置优先级**:
+1. 右上: 元素右侧,垂直对齐顶部
+2. 右下: 元素右侧,垂直对齐底部
+3. 左上: 元素左侧,垂直对齐顶部
+4. 左下: 元素左侧,垂直对齐底部
+5. 上方居中: 元素上方
+6. 下方居中: 元素下方
+7. 回退: 元素内部左上角
+
+**评分标准**:
+- 必须完全在视口内
+- 周围空白空间越大越好
+- 距离视口边缘越远越好
+
+**理由**:
+- **避免遮挡**: 自动选择空旷区域,不影响用户查看元素
+- **适应性强**: 无论元素在屏幕何处,都能找到合适位置
+- **用户体验**: 减少调整标签位置的需要
 
 ## Risks / Trade-offs
 
@@ -140,21 +180,24 @@ element.style.outlineOffset = '-2px'; // 负值向内偏移,避免遮挡
 - 后续可添加防抖(16ms,对应 60fps)
 - 后续可使用 `requestAnimationFrame` 批量更新
 
-### Risk 4: 某些元素可能无法高亮
+### Risk 4: 覆盖层位置可能不准确
 
-**风险**: 某些特殊元素(如 `video`, `canvas`)可能不响应 `outline` 样式。
-
-**缓解措施**:
-- MVP 阶段忽略这些边缘情况
-- 后续可针对特殊元素使用独立的高亮 overlay
-
-### Risk 5: 页面滚动导致高亮不同步
-
-**风险**: 用户滚动页面时,高亮边框可能停留在错误的位置。
+**风险**: 元素有 `transform` 或滚动时,覆盖层位置可能不匹配。
 
 **缓解措施**:
-- outline 是相对于元素的,会自动跟随元素位置
-- 无需特殊处理,浏览器会自动更新
+- MVP 阶段接受简单实现,使用 `getBoundingClientRect()`
+- `getBoundingClientRect()` 返回的是变换后的矩形,可处理大部分 transform 场景
+- 滚动时会在下次 `mouseover` 事件中自动更新位置
+
+### Risk 5: 覆盖层 DOM 可能影响页面性能
+
+**风险**: 频繁更新覆盖层位置可能导致性能问题。
+
+**缓解措施**:
+- 使用 `position: absolute` 配合 `left/top` 而非 `transform` (虽然性能稍差,但实现简单)
+- 不使用过渡动画,避免视觉延迟
+- MVP 阶段不优化,现代浏览器性能足够
+- 后续可使用 `requestAnimationFrame` 优化
 
 ## Migration Plan
 
@@ -249,27 +292,149 @@ element.style.outlineOffset = '-2px'; // 负值向内偏移,避免遮挡
 
 ### 关键实现细节
 
-1. **事件监听器必须在捕获阶段**:
+1. **覆盖层 DOM 结构**:
+   ```typescript
+   // 创建容器
+   const container = document.createElement('div');
+   container.id = 'picker-overlay-root';
+   container.style.cssText = 'position: absolute; top: 0; left: 0; width: 0; height: 0;';
+
+   // 创建高亮层
+   const highlight = document.createElement('div');
+   highlight.className = 'picker-highlight';
+   highlight.style.cssText = `
+     position: absolute;
+     pointer-events: none;
+     background: rgba(33, 150, 243, 0.15);
+     border: 2px solid #2196F3;
+     box-sizing: border-box;
+     z-index: 2147483640;
+   `;
+
+   // 创建信息标签
+   const label = document.createElement('div');
+   label.className = 'picker-label';
+   label.style.cssText = `
+     position: absolute;
+     pointer-events: none;
+     background: #1e1e1e;
+     color: #d4d4d4;
+     padding: 6px 10px;
+     font-family: 'SF Mono', 'Consolas', monospace;
+     font-size: 12px;
+     line-height: 1.4;
+     border-radius: 3px;
+     white-space: nowrap;
+     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+     z-index: 2147483641;
+   `;
+   ```
+
+2. **更新覆盖层位置**:
+   ```typescript
+   private updateOverlay(target: HTMLElement): void {
+     const rect = target.getBoundingClientRect();
+
+     // 更新高亮层
+     this.highlightOverlay.style.left = rect.left + 'px';
+     this.highlightOverlay.style.top = rect.top + 'px';
+     this.highlightOverlay.style.width = rect.width + 'px';
+     this.highlightOverlay.style.height = rect.height + 'px';
+
+     // 更新信息标签
+     const labelPos = this.calculateLabelPosition(rect);
+     this.infoLabel.style.left = labelPos.x + 'px';
+     this.infoLabel.style.top = labelPos.y + 'px';
+
+     // 更新标签内容
+     this.updateLabelContent(target, rect);
+   }
+   ```
+
+3. **智能定位算法**:
+   ```typescript
+   private calculateLabelPosition(rect: DOMRect): {x: number, y: number} {
+     const labelWidth = 150; // 估算宽度
+     const labelHeight = 50;  // 估算高度
+     const gap = 8;
+
+     // 候选位置
+     const candidates = [
+       {x: rect.right + gap, y: rect.top},                    // 右上
+       {x: rect.right + gap, y: rect.bottom - labelHeight},   // 右下
+       {x: rect.left - labelWidth - gap, y: rect.top},        // 左上
+       {x: rect.left - labelWidth - gap, y: rect.bottom - labelHeight}, // 左下
+     ];
+
+     // 选择第一个在视口内的位置
+     const viewport = {width: window.innerWidth, height: window.innerHeight};
+     for (const pos of candidates) {
+       if (pos.x >= 0 && pos.x + labelWidth <= viewport.width &&
+           pos.y >= 0 && pos.y + labelHeight <= viewport.height) {
+         return pos;
+       }
+     }
+
+     // 回退到元素内部
+     return {x: rect.left, y: rect.top};
+   }
+   ```
+
+4. **生成标签内容**:
+   ```typescript
+   private updateLabelContent(target: HTMLElement, rect: DOMRect): void {
+     const tagName = target.tagName.toLowerCase();
+     const width = Math.round(rect.width);
+     const height = Math.round(rect.height);
+
+     let html = `<span style="color: #569CD6;">${this.escapeHtml(tagName)}</span> `;
+     html += `<span style="color: #b5cea8;">${width}x${height}</span>`;
+
+     // 第二行: ID 和类名
+     if (target.id || target.className) {
+       html += '<div>';
+       if (target.id) {
+         html += `<span style="color: #DCDCAA;">#${this.escapeHtml(target.id)}</span> `;
+       }
+       if (target.className) {
+         const classes = target.className.split(' ')
+           .filter(c => c)
+           .map(c => `.${this.escapeHtml(c)}`)
+           .join(' ');
+         html += `<span style="color: #CE9178;">${classes}</span>`;
+       }
+       html += '</div>';
+     }
+
+     this.infoLabel.innerHTML = html;
+   }
+
+   private escapeHtml(text: string): string {
+     const div = document.createElement('div');
+     div.textContent = text;
+     return div.innerHTML;
+   }
+   ```
+
+5. **事件监听器必须在捕获阶段**:
    ```typescript
    document.addEventListener('mouseover', this.handleMouseOver, {
      capture: true
    });
    ```
 
-2. **样式必须使用 !important**:
+6. **清理时必须移除覆盖层**:
    ```typescript
-   element.style.setProperty('outline', '2px solid #2196F3', 'important');
-   element.style.setProperty('outline-offset', '-2px', 'important');
+   private cleanup(): void {
+     this.detachEventListeners();
+     this.overlayContainer?.remove();
+     this.overlayContainer = null;
+     this.highlightOverlay = null;
+     this.infoLabel = null;
+   }
    ```
 
-3. **清理时必须移除事件监听器**:
-   ```typescript
-   document.removeEventListener('mouseover', this.handleMouseOver, {
-     capture: true
-   });
-   ```
-
-4. **消息处理必须有错误处理**:
+7. **消息处理必须有错误处理**:
    ```typescript
    try {
      await browser.tabs.sendMessage(tabId, {type: 'START_PICKER'});
