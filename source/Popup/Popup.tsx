@@ -145,7 +145,7 @@ const Popup: FC = () => {
       </header>
 
       {/* Element Picker Section */}
-      {tabInfo && (
+      {pageInfo && (
         <div className={styles.pickerSection}>
           <button
             type="button"
