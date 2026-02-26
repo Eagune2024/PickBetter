@@ -28,6 +28,7 @@ import {
   PageInfoResponseMessage,
 } from '../types/messages';
 import {getStorage} from '../utils/storage';
+import {startPicker, stopPicker} from './elementPicker';
 
 // Collect page information (word count, links, images)
 function getPageInfo(): PageInfo {
@@ -60,6 +61,19 @@ browser.runtime.onMessage.addListener(
       });
     }
 
+    // Handle element picker messages
+    if (msg.type === 'START_PICKER') {
+      console.log('[ContentScript] 收到启动选择器消息');
+      startPicker();
+      return undefined;
+    }
+
+    if (msg.type === 'STOP_PICKER') {
+      console.log('[ContentScript] 收到停止选择器消息');
+      stopPicker();
+      return undefined;
+    }
+
     return undefined;
   }
 );
@@ -84,6 +98,9 @@ if (document.readyState === 'complete') {
 } else {
   window.addEventListener('load', notifyPageVisit);
 }
+
+// Log when content script loads
+console.log('[ContentScript] 元素选择器模块已加载');
 
 // Log when content script loads (if logging is enabled)
 getStorage(['enableLogging']).then(({enableLogging}) => {

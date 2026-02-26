@@ -54,6 +54,7 @@ const Popup: FC = () => {
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
   const [visitCount, setVisitCount] = useState<number>(0);
   const [username, setUsername] = useState<string>('');
+  const [isPickerActive, setIsPickerActive] = useState<boolean>(false);
 
   useEffect(() => {
     // Get current tab info
@@ -113,12 +114,52 @@ const Popup: FC = () => {
     }
   };
 
+  const handleStartPicker = async (): Promise<void> => {
+    const tabs = await browser.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    const tab = tabs[0];
+
+    if (!tab?.id) {
+      console.error('[Popup] 无法获取当前tab');
+      return;
+    }
+
+    try {
+      await browser.tabs.sendMessage(tab.id, {type: 'START_PICKER'});
+      setIsPickerActive(true);
+      console.log('[Popup] 元素选择器已启动');
+    } catch (error) {
+      console.error('[Popup] 启动选择器失败:', error);
+      // Show error in console instead of alert
+      console.warn('请刷新页面后重试');
+    }
+  };
+
   return (
     <section className={styles.popup}>
       <header className={styles.header}>
         <h1 className={styles.title}>Web Extension Starter</h1>
         {username && <p className={styles.greeting}>Hello, {username}!</p>}
       </header>
+
+      {/* Element Picker Section */}
+      {tabInfo && (
+        <div className={styles.pickerSection}>
+          <button
+            type="button"
+            className={styles.pickerButton}
+            onClick={handleStartPicker}
+            disabled={isPickerActive}
+          >
+            {isPickerActive ? '选择模式中...' : '🎯 选择元素'}
+          </button>
+          {isPickerActive && (
+            <p className={styles.pickerHint}>在页面上点击元素,按ESC退出</p>
+          )}
+        </div>
+      )}
 
       {tabInfo && (
         <div className={styles.tabCard}>

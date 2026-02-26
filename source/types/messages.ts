@@ -65,9 +65,24 @@ export interface VisitCountResponseMessage {
   count: number;
 }
 
+/**
+ * Element Picker Messages
+ * Messages for controlling the element picker functionality
+ */
+
+export interface StartPickerMessage {
+  type: 'START_PICKER';
+}
+
+export interface StopPickerMessage {
+  type: 'STOP_PICKER';
+}
+
 export type ExtensionMessage =
   | GetPageInfoMessage
   | PageInfoResponseMessage
   | PageVisitedMessage
   | GetVisitCountMessage
-  | VisitCountResponseMessage;
+  | VisitCountResponseMessage
+  | StartPickerMessage
+  | StopPickerMessage;
