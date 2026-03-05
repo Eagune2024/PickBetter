@@ -47,12 +47,16 @@ export class ElementPicker {
   private readonly handleMouseOver: (e: MouseEvent) => void;
   private readonly handleClick: (e: MouseEvent) => void;
   private readonly handleKeyDown: (e: KeyboardEvent) => void;
+  private readonly handleWheel: (e: WheelEvent) => void;
+  private readonly handleTouchMove: (e: TouchEvent) => void;
 
   constructor() {
     // Bind event handlers to instance methods
     this.handleMouseOver = this.handleMouseOverImpl.bind(this);
     this.handleClick = this.handleClickImpl.bind(this);
     this.handleKeyDown = this.handleKeyDownImpl.bind(this);
+    this.handleWheel = this.handleWheelImpl.bind(this);
+    this.handleTouchMove = this.handleTouchMoveImpl.bind(this);
   }
 
   /**
@@ -220,7 +224,14 @@ export class ElementPicker {
       capture: true,
     });
     document.addEventListener('click', this.handleClick, {capture: true});
-    document.addEventListener('keydown', this.handleKeyDown);
+    document.addEventListener('keydown', this.handleKeyDown, {
+      capture: true,
+    });
+    // Prevent scrolling when picker is active
+    document.addEventListener('wheel', this.handleWheel, {passive: false});
+    document.addEventListener('touchmove', this.handleTouchMove, {
+      passive: false,
+    });
   }
 
   /**
@@ -233,7 +244,11 @@ export class ElementPicker {
     document.removeEventListener('click', this.handleClick, {
       capture: true,
     });
-    document.removeEventListener('keydown', this.handleKeyDown);
+    document.removeEventListener('keydown', this.handleKeyDown, {
+      capture: true,
+    });
+    document.removeEventListener('wheel', this.handleWheel);
+    document.removeEventListener('touchmove', this.handleTouchMove);
   }
 
   /**
@@ -299,6 +314,27 @@ export class ElementPicker {
    * Handle key down events
    */
   private handleKeyDownImpl(e: KeyboardEvent): void {
+    // Block scroll-related keys when picker is active (PICKING or SELECTED)
+    if (this.state === 'PICKING' || this.state === 'SELECTED') {
+      const scrollKeys = [
+        'ArrowUp',
+        'ArrowDown',
+        'ArrowLeft',
+        'ArrowRight',
+        'PageUp',
+        'PageDown',
+        'Home',
+        'End',
+        ' ',
+      ];
+
+      if (scrollKeys.includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+
     // PICKING state: ESC stops the picker
     if (this.state === 'PICKING' && e.key === 'Escape') {
       e.preventDefault();
@@ -322,6 +358,28 @@ export class ElementPicker {
         this.submitAiPrompt();
         return;
       }
+    }
+  }
+
+  /**
+   * Handle mouse wheel events
+   */
+  private handleWheelImpl(e: WheelEvent): void {
+    // Block scrolling when picker is active
+    if (this.state === 'PICKING' || this.state === 'SELECTED') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  /**
+   * Handle touch move events
+   */
+  private handleTouchMoveImpl(e: TouchEvent): void {
+    // Block scrolling when picker is active
+    if (this.state === 'PICKING' || this.state === 'SELECTED') {
+      e.preventDefault();
+      e.stopPropagation();
     }
   }
 
