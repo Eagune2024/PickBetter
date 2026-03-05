@@ -90,8 +90,10 @@ export class ElementPicker {
     // Create container
     this.overlayContainer = document.createElement('div');
     this.overlayContainer.id = 'picker-overlay-root';
+    // Use position: fixed so the container is always relative to viewport, not document
+    // This ensures getBoundingClientRect() coordinates work correctly when page is scrolled
     this.overlayContainer.style.cssText =
-      'position: absolute; top: 0; left: 0; width: 0; height: 0;';
+      'position: fixed; top: 0; left: 0; width: 0; height: 0;';
 
     // Create highlight overlay
     this.highlightOverlay = document.createElement('div');
