@@ -3,13 +3,21 @@
  *
  * Provides a visual element selection capability for the browser extension.
  * Users can activate picker mode, hover over elements to highlight them,
- * and click to select elements (outputs info to console).
+ * and click to select elements (displays AI dialog for prompt input).
  *
  * Usage:
  *   import {startPicker, stopPicker} from './elementPicker';
  *   startPicker();  // Activate picker mode
  *   stopPicker();   // Deactivate picker mode
  */
+
+/**
+ * Picker state type definition
+ * - IDLE: Picker is not active
+ * - PICKING: User is selecting an element
+ * - SELECTED: Element is selected, AI dialog is displayed
+ */
+type PickerState = 'IDLE' | 'PICKING' | 'SELECTED';
 
 /**
  * ElementPicker Class
@@ -22,13 +30,18 @@
  * - Managing event listeners and cleanup
  */
 export class ElementPicker {
-  private isActive = false;
+  private state: PickerState = 'IDLE';
   private currentElement: HTMLElement | null = null;
+  private selectedElement: HTMLElement | null = null;
 
   // Overlay DOM elements
   private overlayContainer: HTMLElement | null = null;
   private highlightOverlay: HTMLElement | null = null;
   private infoLabel: HTMLElement | null = null;
+
+  // AI Dialog elements
+  private aiDialog: HTMLElement | null = null;
+  private dialogInput: HTMLInputElement | null = null;
 
   // Event handlers bound to the instance
   private readonly handleMouseOver: (e: MouseEvent) => void;
@@ -46,12 +59,12 @@ export class ElementPicker {
    * Start the element picker mode
    */
   public start(): void {
-    if (this.isActive) {
+    if (this.state === 'PICKING' || this.state === 'SELECTED') {
       console.log('[ElementPicker] 选择模式已激活,无需重复启动');
       return;
     }
 
-    this.isActive = true;
+    this.state = 'PICKING';
     this.createOverlay();
     this.attachEventListeners();
     console.log('[ElementPicker] 选择模式已启动,按ESC退出');
@@ -61,12 +74,12 @@ export class ElementPicker {
    * Stop the element picker mode
    */
   public stop(): void {
-    if (!this.isActive) {
+    if (this.state === 'IDLE') {
       return;
     }
 
     this.cleanup();
-    this.isActive = false;
+    this.state = 'IDLE';
     console.log('[ElementPicker] 选择模式已退出');
   }
 
@@ -119,6 +132,84 @@ export class ElementPicker {
   }
 
   /**
+   * Create AI dialog DOM element
+   */
+  private createAiDialog(): void {
+    // Create dialog container
+    this.aiDialog = document.createElement('div');
+    this.aiDialog.className = 'picker-ai-dialog';
+    this.aiDialog.style.cssText = `
+      position: absolute;
+      pointer-events: auto;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 12px 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 2147483642;
+      min-width: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: none;
+    `;
+
+    // Create title
+    const title = document.createElement('div');
+    title.textContent = '如何调整此元素?';
+    title.style.cssText = `
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #d4d4d4;
+      font-weight: 500;
+    `;
+
+    // Create input
+    this.dialogInput = document.createElement('input');
+    this.dialogInput.type = 'text';
+    this.dialogInput.placeholder = '描述你想要的调整（如：把按钮改成红色）';
+    this.dialogInput.style.cssText = `
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #3e3e3e;
+      border-radius: 4px;
+      background: #2d2d2d;
+      color: #d4d4d4;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+    `;
+
+    // Add focus style
+    this.dialogInput.addEventListener('focus', () => {
+      if (this.dialogInput) {
+        this.dialogInput.style.borderColor = '#2196F3';
+      }
+    });
+
+    this.dialogInput.addEventListener('blur', () => {
+      if (this.dialogInput) {
+        this.dialogInput.style.borderColor = '#3e3e3e';
+      }
+    });
+
+    // Create hint text
+    const hint = document.createElement('div');
+    hint.textContent = '按 Enter 提交，ESC 取消';
+    hint.style.cssText = `
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+    `;
+
+    // Assemble dialog
+    this.aiDialog.appendChild(title);
+    this.aiDialog.appendChild(this.dialogInput);
+    this.aiDialog.appendChild(hint);
+
+    // Add to overlay container
+    this.overlayContainer?.appendChild(this.aiDialog);
+  }
+
+  /**
    * Attach event listeners for picker mode
    */
   private attachEventListeners(): void {
@@ -147,7 +238,7 @@ export class ElementPicker {
    * Handle mouse over events
    */
   private handleMouseOverImpl(e: MouseEvent): void {
-    if (!this.isActive) return;
+    if (this.state !== 'PICKING') return;
 
     e.preventDefault();
     e.stopPropagation();
@@ -156,6 +247,9 @@ export class ElementPicker {
 
     // Skip if highlighting the same element
     if (this.currentElement === target) return;
+
+    // Prevent dialog element from triggering highlight
+    if (target.closest('.picker-ai-dialog')) return;
 
     // Update current element
     this.currentElement = target;
@@ -168,13 +262,16 @@ export class ElementPicker {
    * Handle click events
    */
   private handleClickImpl(e: MouseEvent): void {
-    if (!this.isActive) return;
+    if (this.state !== 'PICKING') return;
 
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
 
     const target = e.target as HTMLElement;
+
+    // Prevent dialog element from triggering selection
+    if (target.closest('.picker-ai-dialog')) return;
 
     // Extract and log element information
     const rect = target.getBoundingClientRect();
@@ -191,20 +288,38 @@ export class ElementPicker {
 
     console.log('[ElementPicker] 选中元素:', elementInfo);
 
-    // Stop picker mode
-    this.stop();
+    // Transition to SELECTED state and show AI dialog
+    this.state = 'SELECTED';
+    this.showAiDialog(target);
   }
 
   /**
    * Handle key down events
    */
   private handleKeyDownImpl(e: KeyboardEvent): void {
-    if (!this.isActive) return;
-
-    if (e.key === 'Escape') {
+    // PICKING state: ESC stops the picker
+    if (this.state === 'PICKING' && e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
       this.stop();
+      return;
+    }
+
+    // SELECTED state: ESC cancels dialog, Enter submits prompt
+    if (this.state === 'SELECTED') {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        this.cancelAiDialog();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        this.submitAiPrompt();
+        return;
+      }
     }
   }
 
@@ -278,6 +393,75 @@ export class ElementPicker {
   }
 
   /**
+   * Calculate smart position for AI dialog
+   */
+  private calculateDialogPosition(rect: DOMRect): {x: number; y: number} {
+    // Dialog dimensions
+    const dialogWidth = 300;
+    const dialogHeight = 120;
+    const gap = 12;
+
+    // Candidate positions: right-top, right-bottom, left-top, left-bottom
+    const candidates = [
+      {x: rect.right + gap, y: rect.top},
+      {x: rect.right + gap, y: rect.bottom - dialogHeight},
+      {x: rect.left - dialogWidth - gap, y: rect.top},
+      {x: rect.left - dialogWidth - gap, y: rect.bottom - dialogHeight},
+    ];
+
+    // Viewport dimensions
+    const viewport = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+
+    // Find first position that fits in viewport
+    for (const pos of candidates) {
+      if (
+        pos.x >= 0 &&
+        pos.x + dialogWidth <= viewport.width &&
+        pos.y >= 0 &&
+        pos.y + dialogHeight <= viewport.height
+      ) {
+        return pos;
+      }
+    }
+
+    // Fallback: place inside element at top-left
+    return {x: rect.left, y: rect.top};
+  }
+
+  /**
+   * Get element information for console output
+   */
+  private getElementInfo(element: HTMLElement | null): {
+    tagName: string;
+    id?: string;
+    className?: string;
+    dimensions: {width: number; height: number};
+    textContent?: string;
+  } {
+    if (!element) {
+      return {
+        tagName: '',
+        dimensions: {width: 0, height: 0},
+      };
+    }
+
+    const rect = element.getBoundingClientRect();
+    return {
+      tagName: element.tagName,
+      id: element.id || undefined,
+      className: element.className || undefined,
+      dimensions: {
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+      },
+      textContent: element.textContent?.slice(0, 50) || undefined,
+    };
+  }
+
+  /**
    * Update label content with element information
    */
   private updateLabelContent(target: HTMLElement, rect: DOMRect): void {
@@ -323,11 +507,91 @@ export class ElementPicker {
   }
 
   /**
+   * Show AI dialog for selected element
+   */
+  private showAiDialog(target: HTMLElement): void {
+    // Create dialog if it doesn't exist
+    if (!this.aiDialog) {
+      this.createAiDialog();
+    }
+
+    // Hide info label
+    if (this.infoLabel) {
+      this.infoLabel.style.display = 'none';
+    }
+
+    // Calculate dialog position
+    const rect = target.getBoundingClientRect();
+    const pos = this.calculateDialogPosition(rect);
+
+    // Update dialog position and show it
+    if (this.aiDialog) {
+      this.aiDialog.style.display = 'block';
+      this.aiDialog.style.left = `${pos.x}px`;
+      this.aiDialog.style.top = `${pos.y}px`;
+    }
+
+    // Auto focus input
+    this.dialogInput?.focus();
+
+    // Save selected element
+    this.selectedElement = target;
+
+    // Set state
+    this.state = 'SELECTED';
+  }
+
+  /**
+   * Hide AI dialog
+   */
+  private hideAiDialog(): void {
+    // Remove dialog DOM element
+    if (this.aiDialog) {
+      this.aiDialog.remove();
+      this.aiDialog = null;
+    }
+
+    // Clear references
+    this.dialogInput = null;
+    this.selectedElement = null;
+  }
+
+  /**
+   * Submit AI prompt
+   */
+  private submitAiPrompt(): void {
+    const prompt = this.dialogInput?.value || '';
+
+    console.log('[ElementPicker] AI Prompt:', prompt);
+    console.log(
+      '[ElementPicker] 选中元素:',
+      this.getElementInfo(this.selectedElement)
+    );
+
+    // TODO: Next phase - implement AI interaction
+
+    // Hide dialog and return to PICKING state
+    this.hideAiDialog();
+    this.state = 'PICKING';
+  }
+
+  /**
+   * Cancel AI dialog
+   */
+  private cancelAiDialog(): void {
+    this.hideAiDialog();
+    this.state = 'PICKING';
+  }
+
+  /**
    * Clean up all side effects
    */
   private cleanup(): void {
     // Detach event listeners
     this.detachEventListeners();
+
+    // Hide AI dialog if it's showing
+    this.hideAiDialog();
 
     // Remove overlay container
     if (this.overlayContainer) {
