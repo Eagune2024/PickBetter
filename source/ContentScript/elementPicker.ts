@@ -11,6 +11,63 @@
  *   stopPicker();   // Deactivate picker mode
  */
 
+import browser from 'webextension-polyfill';
+
+/**
+ * 获取存储中的 AI 模型配置
+ */
+async function getAIModelConfig(): Promise<{
+  apiKey?: string;
+  provider?: string;
+  modelName?: string;
+} | null> {
+  try {
+    // 尝试从 storage.local 获取配置
+    if (browser.storage?.local) {
+      const result = await browser.storage.local.get('aiModel');
+      return (result.aiModel as {
+        apiKey?: string;
+        provider?: string;
+        modelName?: string;
+      } | null) ?? null;
+    }
+
+    // 降级处理：使用 chrome API
+    if (
+      typeof window !== 'undefined' &&
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).chrome?.storage?.local
+    ) {
+      return new Promise((resolve) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).chrome.storage.local.get(['aiModel'], (result: any) => {
+          resolve(result.aiModel ?? null);
+        });
+      });
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 打开扩展的 Options 页面
+ *
+ * 注意：内容脚本不能直接调用 chrome.runtime.openOptionsPage()
+ * 需要通过消息通知后台脚本执行
+ */
+function openOptionsPage(): void {
+  // 发送消息到后台脚本，请求打开选项页
+  browser.runtime
+    .sendMessage({type: 'OPEN_OPTIONS'})
+    .catch((err) => {
+      console.error('[ElementPicker] 发送打开选项页消息失败:', err);
+    });
+}
+
+
 /**
  * Picker state type definition
  * - IDLE: Picker is not active
@@ -619,7 +676,7 @@ export class ElementPicker {
   /**
    * Submit AI prompt
    */
-  private submitAiPrompt(): void {
+  private async submitAiPrompt(): Promise<void> {
     const prompt = this.dialogInput?.value || '';
 
     console.log('[ElementPicker] AI Prompt:', prompt);
@@ -628,11 +685,67 @@ export class ElementPicker {
       this.getElementInfo(this.selectedElement)
     );
 
-    // TODO: Next phase - implement AI interaction
+    // 检查是否配置了 AI 模型
+    try {
+      const aiModel = await getAIModelConfig();
 
-    // Hide dialog and return to PICKING state
-    this.hideAiDialog();
-    this.state = 'PICKING';
+      // 如果没有配置 AI 模型，打开 Options 页面
+      if (!aiModel || !aiModel.apiKey) {
+        console.log('[ElementPicker] 未检测到 AI 模型配置，打开设置页面');
+
+        // 显示提示信息
+        if (this.aiDialog) {
+          this.aiDialog.innerHTML = `
+            <div style="
+              font-size: 14px;
+              margin-bottom: 8px;
+              color: #f59e0b;
+              font-weight: 500;
+            ">⚠️ 未配置 AI 模型</div>
+            <div style="
+              font-size: 12px;
+              color: #d4d4d4;
+              margin-bottom: 12px;
+            ">请先在设置页面配置 AI 模型</div>
+            <button id="openSettingsBtn" style="
+              width: 100%;
+              padding: 8px 12px;
+              border: none;
+              border-radius: 4px;
+              background: #2196F3;
+              color: white;
+              font-size: 14px;
+              cursor: pointer;
+              font-weight: 500;
+            ">打开设置</button>
+          `;
+
+          // 添加按钮点击事件
+          const openSettingsBtn =
+            this.aiDialog.querySelector('#openSettingsBtn');
+          openSettingsBtn?.addEventListener('click', () => {
+            openOptionsPage();
+          });
+        }
+        return;
+      }
+
+      // TODO: 已配置 AI 模型，实现 AI 交互
+      console.log('[ElementPicker] AI 模型已配置:', aiModel);
+
+      // Hide dialog and return to PICKING state
+      this.hideAiDialog();
+      this.state = 'PICKING';
+    } catch (error) {
+      console.error('[ElementPicker] 检查 AI 配置时出错:', error);
+
+      // 出错时也尝试打开设置页面
+      openOptionsPage();
+
+      // Hide dialog and return to PICKING state
+      this.hideAiDialog();
+      this.state = 'PICKING';
+    }
   }
 
   /**

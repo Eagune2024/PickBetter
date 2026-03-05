@@ -18,11 +18,15 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
     "@abhijithvijayan/tsconfig": "^1.5.1",
     "@types/node": "^25.0.3",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@types/webextension-polyfill": "^0.12.4",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
     "@typescript-eslint/parser": "^8.51.0",
@@ -35,6 +39,7 @@
     "eslint-plugin-prettier": "^5.5.4",
     "globals": "^17.0.0",
     "postcss": "^8.5.6",
+    "@vitejs/plugin-react": "^4.3.4",
     "prettier": "^3.7.4",
     "sass": "^1.97.1",
     "typescript": "^5.9.3",

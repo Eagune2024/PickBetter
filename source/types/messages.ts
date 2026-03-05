@@ -36,6 +36,16 @@ export interface StopPickerMessage {
 }
 
 /**
+ * 打开选项页消息
+ */
+export interface OpenOptionsMessage {
+  type: 'OPEN_OPTIONS';
+}
+
+/**
  * 扩展消息联合类型
  */
-export type ExtensionMessage = StartPickerMessage | StopPickerMessage;
+export type ExtensionMessage =
+  | StartPickerMessage
+  | StopPickerMessage
+  | OpenOptionsMessage;

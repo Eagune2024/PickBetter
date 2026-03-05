@@ -46,6 +46,12 @@
     }
   },
 
+  "__chrome__options_page": "Options/options.html",
+  "options_ui": {
+    "page": "Options/options.html",
+    "open_in_tab": true
+  },
+
   "background": {
     "__chrome__service_worker": "assets/js/background.bundle.js",
     "__chrome__type": "module",
