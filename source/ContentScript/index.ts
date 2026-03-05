@@ -1,113 +1,42 @@
 /**
  * Content Script
  *
- * This script is injected into every web page that matches the patterns
- * defined in manifest.json's content_scripts section.
+ * 注入到所有网页中，负责接收来自 Background 的消息并启动元素选择器
  *
- * Communication Flow:
- * ┌─────────────────────────────────────────────────────────────────────┐
- * │                         CONTENT SCRIPT                              │
- * │                                                                     │
- * │  1. Page loads → Collects page stats → Sends PAGE_VISITED to       │
- * │     background script                                               │
- * │                                                                     │
- * │  2. Popup requests GET_PAGE_INFO → Content script responds with    │
- * │     PAGE_INFO_RESPONSE containing current page stats               │
- * └─────────────────────────────────────────────────────────────────────┘
- *
- * Message Types:
- * - PAGE_VISITED (outgoing to background): Notify that a page was loaded
- * - GET_PAGE_INFO (incoming from popup): Request for current page stats
- * - PAGE_INFO_RESPONSE (outgoing to popup): Response with page stats
+ * 交互流程：
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │                      BACKGROUND SCRIPT                      │
+ * │                              │                               │
+ * │                              │ START_PICKER                  │
+ * │                              ▼                               │
+ * │                      CONTENT SCRIPT                         │
+ * │                              │                               │
+ * │                              ▼                               │
+ * │                   启动元素选择器                             │
+ * │                   (elementPicker.ts)                        │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 import browser from 'webextension-polyfill';
-import {
-  ExtensionMessage,
-  PageInfo,
-  PageInfoResponseMessage,
-} from '../types/messages';
-import {getStorage} from '../utils/storage';
+import type {ExtensionMessage} from '../types/messages';
 import {startPicker, stopPicker} from './elementPicker';
 
-// Collect page information (word count, links, images)
-function getPageInfo(): PageInfo {
-  const bodyText = document.body?.innerText || '';
-  const wordCount = bodyText
-    .split(/\s+/)
-    .filter((word) => word.length > 0).length;
-  const linkCount = document.querySelectorAll('a').length;
-  const imageCount = document.querySelectorAll('img').length;
+/**
+ * 监听来自 Background 的消息
+ */
+browser.runtime.onMessage.addListener((message: unknown): void => {
+  const msg = message as ExtensionMessage;
 
-  return {
-    url: window.location.href,
-    title: document.title,
-    wordCount,
-    linkCount,
-    imageCount,
-    timestamp: Date.now(),
-  };
-}
-
-// Listen for messages from popup or background
-browser.runtime.onMessage.addListener(
-  (message: unknown): Promise<PageInfoResponseMessage> | undefined => {
-    const msg = message as ExtensionMessage;
-
-    if (msg.type === 'GET_PAGE_INFO') {
-      return Promise.resolve({
-        type: 'PAGE_INFO_RESPONSE',
-        data: getPageInfo(),
-      });
-    }
-
-    // Handle element picker messages
-    if (msg.type === 'START_PICKER') {
-      console.log('[ContentScript] 收到启动选择器消息');
-      startPicker();
-      return undefined;
-    }
-
-    if (msg.type === 'STOP_PICKER') {
-      console.log('[ContentScript] 收到停止选择器消息');
-      stopPicker();
-      return undefined;
-    }
-
-    return undefined;
+  if (msg.type === 'START_PICKER') {
+    console.log('[ContentScript] 启动元素选择器');
+    startPicker();
   }
-);
 
-// Notify background script when page loads
-function notifyPageVisit(): void {
-  const pageInfo = getPageInfo();
-
-  browser.runtime
-    .sendMessage({
-      type: 'PAGE_VISITED',
-      data: pageInfo,
-    })
-    .catch(() => {
-      // Background script might not be ready yet, ignore error
-    });
-}
-
-// Wait for page to fully load before collecting info
-if (document.readyState === 'complete') {
-  notifyPageVisit();
-} else {
-  window.addEventListener('load', notifyPageVisit);
-}
-
-// Log when content script loads
-console.log('[ContentScript] 元素选择器模块已加载');
-
-// Log when content script loads (if logging is enabled)
-getStorage(['enableLogging']).then(({enableLogging}) => {
-  if (enableLogging) {
-    console.log(
-      '[Web Extension Starter] Content script loaded on:',
-      window.location.href
-    );
+  if (msg.type === 'STOP_PICKER') {
+    console.log('[ContentScript] 停止元素选择器');
+    stopPicker();
   }
 });
+
+// Content Script 加载完成
+console.log('[ContentScript] PickBetter 元素选择器已就绪');

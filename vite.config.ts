@@ -1,6 +1,5 @@
 import {defineConfig, build} from 'vite';
 import path from 'node:path';
-import react from '@vitejs/plugin-react';
 import process from 'node:process';
 import zipPack from 'vite-plugin-zip-pack';
 import checker from 'vite-plugin-checker';
@@ -90,8 +89,6 @@ export default defineConfig(({ mode }) => {
 		},
 
 		plugins: [
-			react(),
-
 			// delete previous built compressed file
 			clean({
 				targetFiles: [path.resolve(destPath, getExtensionZipFileName())],
@@ -143,10 +140,6 @@ export default defineConfig(({ mode }) => {
 
 			rollupOptions: {
 				input: {
-					// For UI pages, use the HTML file as the entry.
-					// Vite will find the <script> tag inside and bundle it.
-					popup: path.resolve(sourcePath, 'Popup/popup.html'),
-					options: path.resolve(sourcePath, 'Options/options.html'),
 					// Background script (service worker in Chrome, background script in Firefox)
 					// Both MV3 implementations support ES modules
 					background: path.resolve(sourcePath, 'Background/index.ts'),
