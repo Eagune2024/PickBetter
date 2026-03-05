@@ -141,3 +141,25 @@
 - **WHEN** 系统输出 prompt 和元素信息
 - **THEN** 输出应发送到当前页面的浏览器 console
 - **AND** 输出不应发送到 Popup 或 Background Script
+
+### Requirement: 架构隔离
+元素选择器 SHALL 完全在 Content Script 内部实现所有功能，不依赖与其他模块的通信。
+
+#### Scenario: 对话框功能隔离
+- **WHEN** 用户使用元素选择器的对话框功能
+- **THEN** 对话框应在 Content Script 中创建和管理
+- **AND** 对话框不应与 Popup 通信
+- **AND** 对话框不应与 Background Script 通信
+- **AND** 所有交互逻辑应在页面覆盖层中完成
+
+#### Scenario: 独立的状态管理
+- **WHEN** 元素选择器运行
+- **THEN** 所有状态（IDLE/PICKING/SELECTED）应在 Content Script 中管理
+- **AND** 状态转换不应依赖外部模块
+- **AND** 停止选择器不应向其他模块发送通知
+
+#### Scenario: 无消息类型依赖
+- **WHEN** 系统实现元素选择器功能
+- **THEN** 不应定义新的消息类型用于对话框交互
+- **AND** 不应扩展 StorageSchema 用于对话框状态
+- **AND** 对 Popup 模块无影响

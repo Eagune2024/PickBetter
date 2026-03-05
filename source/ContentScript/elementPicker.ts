@@ -14,7 +14,15 @@
 import browser from 'webextension-polyfill';
 
 /**
- * 获取存储中的 AI 模型配置
+ * Get AI model configuration from storage
+ *
+ * Attempts to retrieve AI model settings from browser storage.
+ * Falls back to chrome.storage.local if webextension-polyfill is not available.
+ *
+ * @returns Promise that resolves to AI model config or null if not configured
+ * @returns {string} [returns.apiKey] - The API key for the AI service
+ * @returns {string} [returns.provider] - The AI provider name
+ * @returns {string} [returns.modelName] - The model name to use
  */
 async function getAIModelConfig(): Promise<{
   apiKey?: string;
@@ -53,10 +61,14 @@ async function getAIModelConfig(): Promise<{
 }
 
 /**
- * 打开扩展的 Options 页面
+ * Open the extension's options page
  *
- * 注意：内容脚本不能直接调用 chrome.runtime.openOptionsPage()
- * 需要通过消息通知后台脚本执行
+ * Content scripts cannot directly call chrome.runtime.openOptionsPage(),
+ * so this function sends a message to the background script to open it.
+ *
+ * @remarks
+ * This is a workaround for content script limitations.
+ * The background script must handle the 'OPEN_OPTIONS' message type.
  */
 function openOptionsPage(): void {
   // 发送消息到后台脚本，请求打开选项页
@@ -195,7 +207,18 @@ export class ElementPicker {
   }
 
   /**
-   * Create AI dialog DOM element
+   * Create the AI dialog DOM element structure
+   *
+   * Creates a floating dialog with:
+   * - Title: "如何调整此元素?"
+   * - Input field for user prompt
+   * - Hint text: "按 Enter 提交，ESC 取消"
+   *
+   * The dialog is styled with inline CSS to ensure it displays correctly
+   * on any website, regardless of existing page styles.
+   *
+   * The dialog is added to the overlay container but remains hidden
+   * until showAiDialog() is called.
    */
   private createAiDialog(): void {
     // Create dialog container
@@ -510,7 +533,21 @@ export class ElementPicker {
   }
 
   /**
-   * Calculate smart position for AI dialog
+   * Calculate optimal position for the AI dialog
+   *
+   * Uses a smart positioning algorithm that:
+   * 1. Tries to place the dialog outside the element (4 candidate positions)
+   * 2. Falls back to inside the element if no external position fits
+   *
+   * Priority order for candidate positions:
+   * - Right-top (element right side, aligned with top)
+   * - Right-bottom (element right side, aligned with bottom)
+   * - Left-top (element left side, aligned with top)
+   * - Left-bottom (element left side, aligned with bottom)
+   * - Inside element at top-left (fallback)
+   *
+   * @param rect - The bounding rectangle of the selected element
+   * @returns Object with x and y coordinates for dialog placement
    */
   private calculateDialogPosition(rect: DOMRect): {x: number; y: number} {
     // Dialog dimensions
@@ -624,7 +661,18 @@ export class ElementPicker {
   }
 
   /**
-   * Show AI dialog for selected element
+   * Show AI dialog for a selected element
+   *
+   * This method:
+   * 1. Creates the dialog if it doesn't exist
+   * 2. Hides the info label (to reduce visual clutter)
+   * 3. Calculates optimal dialog position
+   * 4. Positions and displays the dialog
+   * 5. Auto-focuses the input field for immediate typing
+   * 6. Saves the selected element reference
+   * 7. Transitions state to SELECTED
+   *
+   * @param target - The HTML element that was selected
    */
   private showAiDialog(target: HTMLElement): void {
     // Create dialog if it doesn't exist
@@ -659,7 +707,13 @@ export class ElementPicker {
   }
 
   /**
-   * Hide AI dialog
+   * Hide and clean up the AI dialog
+   *
+   * Removes the dialog DOM element from the overlay container
+   * and clears all related references to prevent memory leaks.
+   *
+   * The info label is NOT explicitly shown here - it will
+   * automatically reappear on the next mouseover event.
    */
   private hideAiDialog(): void {
     // Remove dialog DOM element
@@ -674,7 +728,19 @@ export class ElementPicker {
   }
 
   /**
-   * Submit AI prompt
+   * Handle AI prompt submission
+   *
+   * This method is called when the user presses Enter in the dialog:
+   * 1. Retrieves the prompt text from the input field
+   * 2. Logs the prompt and selected element info to console
+   * 3. Checks if AI model is configured
+   * 4. If not configured, shows a warning dialog with link to settings
+   * 5. If configured, proceeds with AI interaction (TODO)
+   * 6. Hides the dialog and returns to PICKING state
+   *
+   * @remarks
+   * Currently, this only validates configuration and outputs to console.
+   * Full AI interaction will be implemented in a future phase.
    */
   private async submitAiPrompt(): Promise<void> {
     const prompt = this.dialogInput?.value || '';
@@ -749,7 +815,11 @@ export class ElementPicker {
   }
 
   /**
-   * Cancel AI dialog
+   * Cancel the AI dialog and return to PICKING state
+   *
+   * Called when user presses ESC while dialog is open.
+   * Hides the dialog and transitions state back to PICKING,
+   * allowing the user to select a different element.
    */
   private cancelAiDialog(): void {
     this.hideAiDialog();
