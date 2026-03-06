@@ -420,6 +420,7 @@ class Validator {
   private static readonly CSS_WHITELIST = new Set([
     'color',
     'backgroundColor',
+    'background',
     'fontSize',
     'fontWeight',
     'fontStyle',
