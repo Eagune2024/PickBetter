@@ -43,9 +43,54 @@ export interface OpenOptionsMessage {
 }
 
 /**
+ * 请求AI修改消息
+ * 从Content Script发送到Background Script
+ */
+export interface RequestAIModificationMessage {
+  type: 'REQUEST_AI_MODIFICATION';
+  payload: {
+    prompt: string;
+    elementInfo: {
+      tagName: string;
+      id?: string;
+      className?: string;
+      outerHTML: string;
+      textContent?: string;
+      computedStyles: Record<string, string>;
+    };
+  };
+}
+
+/**
+ * 应用操作消息
+ * 从Background Script发送回Content Script
+ */
+export interface ApplyOperationsMessage {
+  type: 'APPLY_OPERATIONS';
+  payload: {
+    operations: unknown[];
+  };
+}
+
+/**
+ * AI修改结果消息
+ * 可选的结果反馈消息
+ */
+export interface AIModificationResultMessage {
+  type: 'AI_MODIFICATION_RESULT';
+  payload: {
+    success: boolean;
+    error?: string;
+  };
+}
+
+/**
  * 扩展消息联合类型
  */
 export type ExtensionMessage =
   | StartPickerMessage
   | StopPickerMessage
-  | OpenOptionsMessage;
+  | OpenOptionsMessage
+  | RequestAIModificationMessage
+  | ApplyOperationsMessage
+  | AIModificationResultMessage;

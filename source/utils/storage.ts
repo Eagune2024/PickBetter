@@ -1,6 +1,6 @@
-import browser from "webextension-polyfill";
-import type { StorageSchema } from "../types/storage";
-import { defaultStorage } from "../types/storage";
+import browser from 'webextension-polyfill';
+import type {StorageSchema} from '../types/storage';
+import {defaultStorage} from '../types/storage';
 
 /**
  * 从本地存储获取指定键的值
@@ -9,7 +9,7 @@ import { defaultStorage } from "../types/storage";
  * @returns 包含请求键值的对象
  */
 export async function getStorage<K extends keyof StorageSchema>(
-  keys: K[],
+  keys: K[]
 ): Promise<Pick<StorageSchema, K>> {
   const result = await browser.storage.local.get(keys);
 
@@ -27,7 +27,7 @@ export async function getStorage<K extends keyof StorageSchema>(
  * @param items - 要设置的键值对
  */
 export async function setStorage<K extends keyof StorageSchema>(
-  items: Pick<StorageSchema, K>,
+  items: Pick<StorageSchema, K>
 ): Promise<void> {
   await browser.storage.local.set(items);
 }
@@ -52,7 +52,7 @@ export async function getAllStorage(): Promise<StorageSchema> {
  * @param keys - 要清除的键数组
  */
 export async function clearStorage(
-  keys: keyof StorageSchema | (keyof StorageSchema)[],
+  keys: keyof StorageSchema | (keyof StorageSchema)[]
 ): Promise<void> {
   const keysArray = Array.isArray(keys) ? keys : [keys];
   await browser.storage.local.remove(keysArray);

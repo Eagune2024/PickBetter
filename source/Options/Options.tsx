@@ -10,11 +10,14 @@ const Options: FC = () => {
   const [saved, setSaved] = useState(false);
 
   // AI 模型配置状态
-  const [aiProvider, setAiProvider] = useState<AIModelConfig['provider']>('openai');
+  const [aiProvider, setAiProvider] =
+    useState<AIModelConfig['provider']>('openai');
   const [aiApiKey, setAiApiKey] = useState('');
   const [aiModelName, setAiModelName] = useState('');
   const [aiBaseUrl, setAiBaseUrl] = useState('');
-  const [zaiServiceSite, setZaiServiceSite] = useState('https://api.z.ai/api/coding/paas/v4');
+  const [zaiServiceSite, setZaiServiceSite] = useState(
+    'https://api.z.ai/api/coding/paas/v4'
+  );
   const [zaiModelName, setZaiModelName] = useState('glm-4.6');
 
   useEffect(() => {
@@ -25,7 +28,9 @@ const Options: FC = () => {
         setAiApiKey(result.aiModel.apiKey);
         setAiModelName(result.aiModel.modelName);
         setAiBaseUrl(result.aiModel.baseUrl || '');
-        setZaiServiceSite(result.aiModel.serviceSite || 'https://api.z.ai/api/coding/paas/v4');
+        setZaiServiceSite(
+          result.aiModel.serviceSite || 'https://api.z.ai/api/coding/paas/v4'
+        );
         if (result.aiModel.provider === 'zai') {
           setZaiModelName(result.aiModel.modelName || 'glm-4.6');
         }
@@ -74,7 +79,8 @@ const Options: FC = () => {
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>AI 模型配置</h2>
           <p className={styles.sectionHint}>
-            配置 AI 模型以使用智能元素调整功能。未配置时，选择元素后将打开此设置页面。
+            配置 AI
+            模型以使用智能元素调整功能。未配置时，选择元素后将打开此设置页面。
           </p>
 
           {/* API 提供商 */}
@@ -115,8 +121,12 @@ const Options: FC = () => {
                 <option value="https://open.bigmodel.cn/api/coding/paas/v4">
                   China Coding
                 </option>
-                <option value="https://api.z.ai/api/paas/v4">International API</option>
-                <option value="https://open.bigmodel.cn/api/paas/v4">China API</option>
+                <option value="https://api.z.ai/api/paas/v4">
+                  International API
+                </option>
+                <option value="https://open.bigmodel.cn/api/paas/v4">
+                  China API
+                </option>
               </select>
             </div>
           )}

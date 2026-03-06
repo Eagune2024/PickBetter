@@ -12,73 +12,8 @@
  */
 
 import browser from 'webextension-polyfill';
-
-/**
- * Get AI model configuration from storage
- *
- * Attempts to retrieve AI model settings from browser storage.
- * Falls back to chrome.storage.local if webextension-polyfill is not available.
- *
- * @returns Promise that resolves to AI model config or null if not configured
- * @returns {string} [returns.apiKey] - The API key for the AI service
- * @returns {string} [returns.provider] - The AI provider name
- * @returns {string} [returns.modelName] - The model name to use
- */
-async function getAIModelConfig(): Promise<{
-  apiKey?: string;
-  provider?: string;
-  modelName?: string;
-} | null> {
-  try {
-    // 尝试从 storage.local 获取配置
-    if (browser.storage?.local) {
-      const result = await browser.storage.local.get('aiModel');
-      return (result.aiModel as {
-        apiKey?: string;
-        provider?: string;
-        modelName?: string;
-      } | null) ?? null;
-    }
-
-    // 降级处理：使用 chrome API
-    if (
-      typeof window !== 'undefined' &&
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).chrome?.storage?.local
-    ) {
-      return new Promise((resolve) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).chrome.storage.local.get(['aiModel'], (result: any) => {
-          resolve(result.aiModel ?? null);
-        });
-      });
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Open the extension's options page
- *
- * Content scripts cannot directly call chrome.runtime.openOptionsPage(),
- * so this function sends a message to the background script to open it.
- *
- * @remarks
- * This is a workaround for content script limitations.
- * The background script must handle the 'OPEN_OPTIONS' message type.
- */
-function openOptionsPage(): void {
-  // 发送消息到后台脚本，请求打开选项页
-  browser.runtime
-    .sendMessage({type: 'OPEN_OPTIONS'})
-    .catch((err) => {
-      console.error('[ElementPicker] 发送打开选项页消息失败:', err);
-    });
-}
-
+import type {ElementInfo} from '../types/operations';
+import {OperationExecutor} from '../utils/operationExecutor';
 
 /**
  * Picker state type definition
@@ -111,6 +46,7 @@ export class ElementPicker {
   // AI Dialog elements
   private aiDialog: HTMLElement | null = null;
   private dialogInput: HTMLInputElement | null = null;
+  private dialogContentBackup: string | null = null; // 备份对话框内容用于恢复
 
   // Event handlers bound to the instance
   private readonly handleMouseOver: (e: MouseEvent) => void;
@@ -732,85 +668,271 @@ export class ElementPicker {
    *
    * This method is called when the user presses Enter in the dialog:
    * 1. Retrieves the prompt text from the input field
-   * 2. Logs the prompt and selected element info to console
-   * 3. Checks if AI model is configured
-   * 4. If not configured, shows a warning dialog with link to settings
-   * 5. If configured, proceeds with AI interaction (TODO)
-   * 6. Hides the dialog and returns to PICKING state
-   *
-   * @remarks
-   * Currently, this only validates configuration and outputs to console.
-   * Full AI interaction will be implemented in a future phase.
+   * 2. Extracts element information
+   * 3. Sends request to Background Script
+   * 4. Shows loading state
    */
   private async submitAiPrompt(): Promise<void> {
     const prompt = this.dialogInput?.value || '';
 
+    if (!prompt.trim()) {
+      return;
+    }
+
     console.log('[ElementPicker] AI Prompt:', prompt);
-    console.log(
-      '[ElementPicker] 选中元素:',
-      this.getElementInfo(this.selectedElement)
-    );
 
-    // 检查是否配置了 AI 模型
+    // 提取元素信息
+    const elementInfo = this.extractElementInfo(this.selectedElement);
+
     try {
-      const aiModel = await getAIModelConfig();
+      // 构建并发送请求
+      await browser.runtime.sendMessage({
+        type: 'REQUEST_AI_MODIFICATION',
+        payload: {
+          prompt,
+          elementInfo,
+        },
+      });
 
-      // 如果没有配置 AI 模型，打开 Options 页面
-      if (!aiModel || !aiModel.apiKey) {
-        console.log('[ElementPicker] 未检测到 AI 模型配置，打开设置页面');
+      console.log('[ElementPicker] 已发送AI请求到Background');
 
-        // 显示提示信息
-        if (this.aiDialog) {
-          this.aiDialog.innerHTML = `
-            <div style="
-              font-size: 14px;
-              margin-bottom: 8px;
-              color: #f59e0b;
-              font-weight: 500;
-            ">⚠️ 未配置 AI 模型</div>
-            <div style="
-              font-size: 12px;
-              color: #d4d4d4;
-              margin-bottom: 12px;
-            ">请先在设置页面配置 AI 模型</div>
-            <button id="openSettingsBtn" style="
-              width: 100%;
-              padding: 8px 12px;
-              border: none;
-              border-radius: 4px;
-              background: #2196F3;
-              color: white;
-              font-size: 14px;
-              cursor: pointer;
-              font-weight: 500;
-            ">打开设置</button>
-          `;
-
-          // 添加按钮点击事件
-          const openSettingsBtn =
-            this.aiDialog.querySelector('#openSettingsBtn');
-          openSettingsBtn?.addEventListener('click', () => {
-            openOptionsPage();
-          });
-        }
-        return;
-      }
-
-      // TODO: 已配置 AI 模型，实现 AI 交互
-      console.log('[ElementPicker] AI 模型已配置:', aiModel);
-
-      // Hide dialog and return to PICKING state
-      this.hideAiDialog();
-      this.state = 'PICKING';
+      // 显示loading状态
+      this.showLoading();
     } catch (error) {
-      console.error('[ElementPicker] 检查 AI 配置时出错:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      console.error('[ElementPicker] 发送AI请求失败:', errorMessage);
+      this.showError('发送请求失败，请重试');
+    }
+  }
 
-      // 出错时也尝试打开设置页面
-      openOptionsPage();
+  /**
+   * 提取元素信息
+   *
+   * @param element - HTML元素
+   * @returns 元素信息对象
+   */
+  private extractElementInfo(element: HTMLElement | null): ElementInfo {
+    if (!element) {
+      return {
+        tagName: '',
+        outerHTML: '',
+        computedStyles: {},
+      };
+    }
 
-      // Hide dialog and return to PICKING state
+    const computedStyles = window.getComputedStyle(element);
+
+    // 提取常用的CSS属性
+    const styleProps = [
+      'color',
+      'backgroundColor',
+      'fontSize',
+      'fontWeight',
+      'padding',
+      'margin',
+      'border',
+      'borderRadius',
+      'width',
+      'height',
+      'display',
+    ];
+
+    const styles: Record<string, string> = {};
+    styleProps.forEach((prop) => {
+      styles[prop] = computedStyles.getPropertyValue(prop);
+    });
+
+    return {
+      tagName: element.tagName,
+      id: element.id || undefined,
+      className: element.className || undefined,
+      outerHTML: element.outerHTML.slice(0, 1000), // 截断到1000字符
+      textContent: element.textContent?.slice(0, 100), // 截断到100字符
+      computedStyles: styles,
+    };
+  }
+
+  /**
+   * 显示loading状态
+   */
+  private showLoading(): void {
+    if (!this.aiDialog) return;
+
+    // 保存当前对话框内容
+    this.dialogContentBackup = this.aiDialog.innerHTML;
+
+    // 替换为loading状态
+    this.aiDialog.innerHTML = `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        min-width: 200px;
+      ">
+        <div class="picker-spinner" style="
+          width: 32px;
+          height: 32px;
+          border: 3px solid #3e3e3e;
+          border-top-color: #2196F3;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        "></div>
+        <div style="
+          margin-top: 12px;
+          font-size: 14px;
+          color: #d4d4d4;
+        ">AI正在思考...</div>
+      </div>
+      <style>
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      </style>
+    `;
+
+    // 禁用所有交互
+    this.aiDialog.style.pointerEvents = 'none';
+  }
+
+  /**
+   * 隐藏loading状态
+   */
+  private hideLoading(): void {
+    // 恢复对话框内容
+    if (this.aiDialog && this.dialogContentBackup) {
+      this.aiDialog.innerHTML = this.dialogContentBackup;
+      this.aiDialog.style.pointerEvents = 'auto';
+
+      // 重新绑定input元素
+      this.dialogInput = this.aiDialog.querySelector(
+        'input[type="text"]'
+      ) as HTMLInputElement;
+    }
+  }
+
+  /**
+   * 显示成功状态
+   */
+  private showSuccess(): void {
+    if (!this.aiDialog) return;
+
+    this.aiDialog.innerHTML = `
+      <div style="
+        padding: 16px;
+        min-width: 280px;
+      ">
+        <div style="
+          font-size: 16px;
+          color: #4caf50;
+          margin-bottom: 8px;
+          font-weight: 500;
+        ">✓ 修改成功</div>
+        <div style="
+          font-size: 13px;
+          color: #d4d4d4;
+          margin-bottom: 16px;
+        ">元素已按照您的要求修改</div>
+        <button id="closeSuccessBtn" style="
+          width: 100%;
+          padding: 8px 12px;
+          border: none;
+          border-radius: 4px;
+          background: #2196F3;
+          color: white;
+          font-size: 14px;
+          cursor: pointer;
+        ">继续选择</button>
+      </div>
+    `;
+
+    const closeBtn = this.aiDialog.querySelector('#closeSuccessBtn');
+    closeBtn?.addEventListener('click', () => {
       this.hideAiDialog();
       this.state = 'PICKING';
+    });
+  }
+
+  /**
+   * 显示错误状态
+   *
+   * @param error - 错误消息
+   */
+  private showError(error: string): void {
+    if (!this.aiDialog) return;
+
+    this.aiDialog.innerHTML = `
+      <div style="
+        padding: 16px;
+        min-width: 280px;
+      ">
+        <div style="
+          font-size: 16px;
+          color: #f44336;
+          margin-bottom: 8px;
+          font-weight: 500;
+        ">❌ 修改失败</div>
+        <div style="
+          font-size: 13px;
+          color: #d4d4d4;
+          margin-bottom: 16px;
+          line-height: 1.5;
+        ">${this.escapeHtml(error)}</div>
+        <button id="closeErrorBtn" style="
+          width: 100%;
+          padding: 8px 12px;
+          border: none;
+          border-radius: 4px;
+          background: #3e3e3e;
+          color: #d4d4d4;
+          font-size: 14px;
+          cursor: pointer;
+        ">关闭</button>
+      </div>
+    `;
+
+    const closeBtn = this.aiDialog.querySelector('#closeErrorBtn');
+    closeBtn?.addEventListener('click', () => {
+      this.cancelAiDialog();
+    });
+  }
+
+  /**
+   * 处理应用操作消息
+   *
+   * @param operations - 操作数组
+   */
+  private async handleApplyOperations(operations: unknown[]): Promise<void> {
+    if (!this.selectedElement) {
+      console.error('[ElementPicker] 没有选中的元素');
+      this.showError('元素不存在');
+      return;
+    }
+
+    try {
+      const executor = new OperationExecutor();
+      const result = await executor.execute(this.selectedElement, operations);
+
+      console.log('[ElementPicker] 操作执行结果:', result);
+
+      if (result.failedOperations.length === 0) {
+        // 全部成功
+        this.showSuccess();
+      } else if (result.successfulOperations.length === 0) {
+        // 全部失败
+        const error = result.failedOperations[0]?.error || '操作执行失败';
+        this.showError(error);
+      } else {
+        // 部分成功
+        const failedCount = result.failedOperations.length;
+        this.showSuccess();
+        console.warn(`[ElementPicker] ${failedCount} 个操作失败，已跳过`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      console.error('[ElementPicker] 执行操作失败:', errorMessage);
+      this.showError(errorMessage);
     }
   }
 
@@ -871,3 +993,33 @@ export const stopPicker = (): void => {
     pickerInstance.stop();
   }
 };
+
+// ==================== 消息监听器 ====================
+
+/**
+ * 监听来自Background Script的消息
+ */
+browser.runtime.onMessage.addListener((message: unknown) => {
+  const msg = message as {
+    type: string;
+    payload: {operations?: unknown[]; error?: string};
+  };
+
+  if (msg.type === 'APPLY_OPERATIONS') {
+    console.log('[ElementPicker] 收到操作指令');
+
+    if (msg.payload.error) {
+      // 有错误，显示错误信息
+      if (pickerInstance) {
+        pickerInstance['showError'](msg.payload.error);
+      }
+    } else if (msg.payload.operations) {
+      // 有操作指令，执行操作
+      if (pickerInstance) {
+        pickerInstance['handleApplyOperations'](msg.payload.operations);
+      }
+    }
+  }
+
+  return false;
+});

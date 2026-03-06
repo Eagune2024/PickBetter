@@ -24,6 +24,8 @@
 
 import browser from 'webextension-polyfill';
 import type {ExtensionMessage} from '../types/messages';
+import {AIClient} from '../utils/aiClient';
+import {getStorage} from '../utils/storage';
 
 /**
  * 显示浏览器通知
@@ -64,9 +66,74 @@ browser.action.onClicked.addListener(async (tab) => {
 });
 
 /**
+ * 处理AI修改请求
+ */
+async function handleAIModification(
+  message: ExtensionMessage,
+  sender: browser.Runtime.MessageSender
+): Promise<void> {
+  if (message.type !== 'REQUEST_AI_MODIFICATION') {
+    return;
+  }
+
+  console.log('[Background] 收到AI修改请求');
+
+  // 获取tab ID
+  const tabId = sender.tab?.id;
+  if (!tabId) {
+    console.error('[Background] 无法获取标签页 ID');
+    return;
+  }
+
+  try {
+    // 获取AI配置
+    const storage = await getStorage(['aiModel']);
+    const aiModel = storage.aiModel;
+
+    if (!aiModel || !aiModel.apiKey) {
+      console.error('[Background] AI模型未配置');
+      await browser.tabs.sendMessage(tabId, {
+        type: 'APPLY_OPERATIONS',
+        payload: {
+          error: 'AI模型未配置，请在设置页面配置',
+        },
+      });
+      return;
+    }
+
+    // 创建AI客户端并请求修改
+    const client = new AIClient(aiModel);
+    const response = await client.requestModification(message.payload);
+
+    console.log('[Background] AI响应:', response);
+
+    // 发送操作回Content Script
+    await browser.tabs.sendMessage(tabId, {
+      type: 'APPLY_OPERATIONS',
+      payload: {
+        operations: response.operations,
+      },
+    });
+
+    console.log('[Background] 已发送操作指令到Content Script');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : '未知错误';
+    console.error('[Background] 处理AI请求失败:', errorMessage);
+
+    // 发送错误回Content Script
+    await browser.tabs.sendMessage(tabId, {
+      type: 'APPLY_OPERATIONS',
+      payload: {
+        error: errorMessage,
+      },
+    });
+  }
+}
+
+/**
  * 监听来自 Content Script 的消息
  */
-browser.runtime.onMessage.addListener((message: unknown) => {
+browser.runtime.onMessage.addListener((message: unknown, sender) => {
   const msg = message as ExtensionMessage;
 
   if (msg.type === 'OPEN_OPTIONS') {
@@ -77,9 +144,14 @@ browser.runtime.onMessage.addListener((message: unknown) => {
         console.error('[Background] 打开选项页失败:', error);
       });
     }
+  } else if (msg.type === 'REQUEST_AI_MODIFICATION') {
+    // 处理AI修改请求（异步）
+    handleAIModification(msg, sender).catch((error) => {
+      console.error('[Background] 处理AI修改请求失败:', error);
+    });
   }
 
-  // 返回 true 表示异步响应（虽然这里我们不需要返回响应）
+  // 返回 true 表示异步响应
   return true;
 });
 
