@@ -152,7 +152,6 @@ ${elementInfo.outerHTML}
         ],
         temperature: 0.7,
       }),
-      signal: AbortSignal.timeout(10000), // 10秒超时
     });
 
     if (!response.ok) {
@@ -196,7 +195,6 @@ ${elementInfo.outerHTML}
           },
         ],
       }),
-      signal: AbortSignal.timeout(10000), // 10秒超时
     });
 
     if (!response.ok) {
@@ -240,7 +238,6 @@ ${elementInfo.outerHTML}
         ],
         temperature: 0.7,
       }),
-      signal: AbortSignal.timeout(100000), // 100秒超时
     });
 
     if (!response.ok) {
@@ -286,7 +283,6 @@ ${elementInfo.outerHTML}
         ],
         temperature: 0.7,
       }),
-      signal: AbortSignal.timeout(10000), // 10秒超时
     });
 
     if (!response.ok) {
