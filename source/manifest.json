@@ -11,7 +11,7 @@
   },
   "description": "快速选择网页元素",
 
-  "permissions": ["activeTab", "notifications"],
+  "permissions": ["storage", "activeTab", "notifications"],
 
   "optional_permissions": [],
 
