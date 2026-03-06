@@ -14,6 +14,8 @@ const Options: FC = () => {
   const [aiApiKey, setAiApiKey] = useState('');
   const [aiModelName, setAiModelName] = useState('');
   const [aiBaseUrl, setAiBaseUrl] = useState('');
+  const [zaiServiceSite, setZaiServiceSite] = useState('https://api.z.ai/api/coding/paas/v4');
+  const [zaiModelName, setZaiModelName] = useState('glm-4.6');
 
   useEffect(() => {
     getStorage(['aiModel']).then((result) => {
@@ -23,6 +25,10 @@ const Options: FC = () => {
         setAiApiKey(result.aiModel.apiKey);
         setAiModelName(result.aiModel.modelName);
         setAiBaseUrl(result.aiModel.baseUrl || '');
+        setZaiServiceSite(result.aiModel.serviceSite || 'https://api.z.ai/api/coding/paas/v4');
+        if (result.aiModel.provider === 'zai') {
+          setZaiModelName(result.aiModel.modelName || 'glm-4.6');
+        }
       }
     });
   }, []);
@@ -35,8 +41,17 @@ const Options: FC = () => {
       ? {
           provider: aiProvider,
           apiKey: aiApiKey,
-          modelName: aiModelName || (aiProvider === 'openai' ? 'gpt-4' : 'claude-3-opus'),
+          modelName:
+            aiProvider === 'zai'
+              ? zaiModelName
+              : aiModelName ||
+                (aiProvider === 'openai'
+                  ? 'gpt-4'
+                  : aiProvider === 'claude'
+                    ? 'claude-3-opus'
+                    : 'gpt-4'),
           ...(aiBaseUrl && {baseUrl: aiBaseUrl}),
+          ...(aiProvider === 'zai' && {serviceSite: zaiServiceSite}),
         }
       : null;
 
@@ -62,6 +77,7 @@ const Options: FC = () => {
             配置 AI 模型以使用智能元素调整功能。未配置时，选择元素后将打开此设置页面。
           </p>
 
+          {/* API 提供商 */}
           <div className={styles.selectGroup}>
             <label htmlFor="aiProvider" className={styles.label}>
               AI 提供商
@@ -76,39 +92,102 @@ const Options: FC = () => {
             >
               <option value="openai">OpenAI</option>
               <option value="claude">Claude</option>
+              <option value="zai">Z.ai</option>
               <option value="custom">自定义</option>
             </select>
           </div>
 
+          {/* Z.ai 服务站点选择 */}
+          {aiProvider === 'zai' && (
+            <div className={styles.selectGroup}>
+              <label htmlFor="zaiServiceSite" className={styles.label}>
+                Z AI 服务站点
+              </label>
+              <select
+                id="zaiServiceSite"
+                className={styles.select}
+                value={zaiServiceSite}
+                onChange={(e): void => setZaiServiceSite(e.target.value)}
+              >
+                <option value="https://api.z.ai/api/coding/paas/v4">
+                  International Coding
+                </option>
+                <option value="https://open.bigmodel.cn/api/coding/paas/v4">
+                  China Coding
+                </option>
+                <option value="https://api.z.ai/api/paas/v4">International API</option>
+                <option value="https://open.bigmodel.cn/api/paas/v4">China API</option>
+              </select>
+            </div>
+          )}
+
+          {/* Z.ai 模型选择 */}
+          {aiProvider === 'zai' && (
+            <div className={styles.selectGroup}>
+              <label htmlFor="zaiModelName" className={styles.label}>
+                模型
+              </label>
+              <select
+                id="zaiModelName"
+                className={styles.select}
+                value={zaiModelName}
+                onChange={(e): void => setZaiModelName(e.target.value)}
+              >
+                <option value="glm-4.5">glm-4.5</option>
+                <option value="glm-4.5-air">glm-4.5-air</option>
+                <option value="glm-4.5-x">glm-4.5-x</option>
+                <option value="glm-4.5-airx">glm-4.5-airx</option>
+                <option value="glm-4.5-flash">glm-4.5-flash</option>
+                <option value="glm-4.5v">glm-4.5v</option>
+                <option value="glm-4.6">glm-4.6</option>
+                <option value="glm-4.6v">glm-4.6v</option>
+                <option value="glm-4.6v-flash">glm-4.6v-flash</option>
+                <option value="glm-4.7">glm-4.7</option>
+                <option value="glm-4.7-flash">glm-4.7-flash</option>
+                <option value="glm-5">glm-5</option>
+                <option value="glm-4-32b-0414-128k">glm-4-32b-0414-128k</option>
+              </select>
+            </div>
+          )}
+
+          {/* API Key */}
           <Input
-            label="API Key"
+            label="Z AI API 密钥"
             id="apiKey"
             name="apiKey"
             type="password"
-            placeholder="输入您的 API Key"
+            placeholder={
+              aiProvider === 'zai'
+                ? '输入您的 Z AI API Key'
+                : '输入您的 API Key'
+            }
             spellCheck={false}
             autoComplete="off"
             value={aiApiKey}
             onChange={(e): void => setAiApiKey(e.target.value)}
           />
 
-          <Input
-            label="模型名称"
-            id="modelName"
-            name="modelName"
-            placeholder={
-              aiProvider === 'openai'
-                ? '例如: gpt-4, gpt-3.5-turbo'
-                : aiProvider === 'claude'
-                  ? '例如: claude-3-opus-20240229'
-                  : '自定义模型名称'
-            }
-            spellCheck={false}
-            autoComplete="off"
-            value={aiModelName}
-            onChange={(e): void => setAiModelName(e.target.value)}
-          />
+          {/* 非 Z.ai 提供商的模型名称输入 */}
+          {aiProvider !== 'zai' && (
+            <Input
+              label="模型名称"
+              id="modelName"
+              name="modelName"
+              placeholder={
+                aiProvider === 'openai'
+                  ? '例如: gpt-4, gpt-3.5-turbo'
+                  : aiProvider === 'claude'
+                    ? '例如: claude-3-opus-20240229'
+                    : '自定义模型名称'
+              }
+              spellCheck={false}
+              autoComplete="off"
+              value={aiModelName}
+              onChange={(e): void => setAiModelName(e.target.value)}
+            />
+          )}
 
+          {/* 自定义提供商的 Base URL */}
           {aiProvider === 'custom' && (
             <Input
               label="Base URL"

@@ -8,10 +8,11 @@
  * AI 模型配置
  */
 export interface AIModelConfig {
-  provider: 'openai' | 'claude' | 'custom';
+  provider: 'openai' | 'claude' | 'custom' | 'zai';
   apiKey: string;
   modelName: string;
   baseUrl?: string; // 自定义 API 的基础 URL
+  serviceSite?: string; // Z.ai 服务站点
 }
 
 /**
