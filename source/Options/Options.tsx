@@ -4,13 +4,9 @@ import type {AIModelConfig} from '../types/storage';
 import {getStorage, setStorage} from '../utils/storage';
 import {Button} from '../components/Button/Button';
 import {Input} from '../components/Input/Input';
-import {Checkbox} from '../components/Checkbox/Checkbox';
-import {GitHubIcon} from '../components/icons/GitHubIcon';
 import styles from './Options.module.scss';
 
 const Options: FC = () => {
-  const [username, setUsername] = useState('');
-  const [enableLogging, setEnableLogging] = useState(false);
   const [saved, setSaved] = useState(false);
 
   // AI 模型配置状态
@@ -20,10 +16,7 @@ const Options: FC = () => {
   const [aiBaseUrl, setAiBaseUrl] = useState('');
 
   useEffect(() => {
-    getStorage(['username', 'enableLogging', 'aiModel']).then((result) => {
-      setUsername(result.username);
-      setEnableLogging(result.enableLogging);
-
+    getStorage(['aiModel']).then((result) => {
       // 加载 AI 模型配置
       if (result.aiModel) {
         setAiProvider(result.aiModel.provider);
@@ -48,8 +41,6 @@ const Options: FC = () => {
       : null;
 
     await setStorage({
-      username,
-      enableLogging,
       aiModel,
     });
     setSaved(true);
@@ -64,30 +55,6 @@ const Options: FC = () => {
       </header>
 
       <form onSubmit={handleSave} className={styles.form}>
-        {/* 基本设置部分 */}
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>基本设置</h2>
-
-          <Input
-            label="用户名"
-            id="username"
-            name="username"
-            placeholder="输入您的名称"
-            spellCheck={false}
-            autoComplete="off"
-            value={username}
-            onChange={(e): void => setUsername(e.target.value)}
-          />
-
-          <Checkbox
-            id="logging"
-            name="logging"
-            label="在控制台显示每个页面启用的功能"
-            checked={enableLogging}
-            onChange={(e): void => setEnableLogging(e.target.checked)}
-          />
-        </div>
-
         {/* AI 模型配置部分 */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>AI 模型配置</h2>
@@ -163,18 +130,6 @@ const Options: FC = () => {
           {saved && <span className={styles.status}>设置已保存</span>}
         </div>
       </form>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://github.com/eagune/PickBetter"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.githubLink}
-        >
-          <GitHubIcon size={18} />
-          <span>在 GitHub 上查看</span>
-        </a>
-      </footer>
     </div>
   );
 };
