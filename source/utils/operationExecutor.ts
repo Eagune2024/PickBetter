@@ -312,7 +312,10 @@ export class OperationExecutor {
     element: HTMLElement,
     operation: SetStyleOperation
   ): void {
-    element.style[operation.property] = operation.value;
+    element.style.setProperty(
+      operation.property.replace(/([A-Z])/g, '-$1').toLowerCase(),
+      operation.value
+    );
   }
 
   /**

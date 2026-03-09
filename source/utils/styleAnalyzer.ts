@@ -173,9 +173,7 @@ export class StyleAnalyzer {
         'marginBottom',
         'marginLeft',
       ].forEach((prop) => {
-        const value = parseFloat(
-          style.getPropertyValue(prop as keyof CSSStyleDeclaration)
-        );
+        const value = parseFloat(style.getPropertyValue(prop));
         if (!isNaN(value) && value > 0) {
           spacingValues.add(value);
         }
