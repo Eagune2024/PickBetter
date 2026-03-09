@@ -52,7 +52,7 @@ export class ElementPicker {
   private state: PickerState = 'IDLE';
   private currentElement: HTMLElement | null = null;
   private selectedElement: HTMLElement | null = null;
-  private isSubmitting: boolean = false; // 防止重复提交
+  private isSubmitting = false; // 防止重复提交
 
   // Overlay DOM elements
   private overlayContainer: HTMLElement | null = null;
@@ -62,7 +62,6 @@ export class ElementPicker {
   // AI Dialog elements
   private aiDialog: HTMLElement | null = null;
   private dialogInput: HTMLInputElement | null = null;
-  private dialogContentBackup: string | null = null; // 备份对话框内容用于恢复
 
   // 进度步骤
   private progressSteps: ProgressStep[] = []; // 保存当前步骤列表
@@ -541,36 +540,6 @@ export class ElementPicker {
   }
 
   /**
-   * Get element information for console output
-   */
-  private getElementInfo(element: HTMLElement | null): {
-    tagName: string;
-    id?: string;
-    className?: string;
-    dimensions: {width: number; height: number};
-    textContent?: string;
-  } {
-    if (!element) {
-      return {
-        tagName: '',
-        dimensions: {width: 0, height: 0},
-      };
-    }
-
-    const rect = element.getBoundingClientRect();
-    return {
-      tagName: element.tagName,
-      id: element.id || undefined,
-      className: element.className || undefined,
-      dimensions: {
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
-      },
-      textContent: element.textContent?.slice(0, 50) || undefined,
-    };
-  }
-
-  /**
    * Update label content with element information
    */
   private updateLabelContent(target: HTMLElement, rect: DOMRect): void {
@@ -691,18 +660,18 @@ export class ElementPicker {
   private generateSteps(needsDeepAnalysis: boolean): ProgressStep[] {
     if (needsDeepAnalysis) {
       return [
-        {id: 'extract', label: '提取元素信息', status: 'pending' },
-        {id: 'parent', label: '提取父元素信息', status: 'pending' },
-        {id: 'siblings', label: '分析兄弟元素', status: 'pending' },
-        {id: 'layout', label: '分析页面布局', status: 'pending' },
-        {id: 'ai', label: 'AI 正在思考...', status: 'pending' },
-        {id: 'apply', label: '应用修改', status: 'pending' },
+        {id: 'extract', label: '提取元素信息', status: 'pending'},
+        {id: 'parent', label: '提取父元素信息', status: 'pending'},
+        {id: 'siblings', label: '分析兄弟元素', status: 'pending'},
+        {id: 'layout', label: '分析页面布局', status: 'pending'},
+        {id: 'ai', label: 'AI 正在思考...', status: 'pending'},
+        {id: 'apply', label: '应用修改', status: 'pending'},
       ];
     } else {
       return [
-        {id: 'extract', label: '提取元素信息', status: 'pending' },
-        {id: 'ai', label: 'AI 正在思考...', status: 'pending' },
-        {id: 'apply', label: '应用修改', status: 'pending' },
+        {id: 'extract', label: '提取元素信息', status: 'pending'},
+        {id: 'ai', label: 'AI 正在思考...', status: 'pending'},
+        {id: 'apply', label: '应用修改', status: 'pending'},
       ];
     }
   }
@@ -747,7 +716,7 @@ export class ElementPicker {
             <span class='step-icon'>${this.getStepIcon(step.status)}</span>
             <span class='step-label'>${step.label}</span>
           </div>
-        `,
+        `
           )
           .join('')}
       </div>
@@ -807,8 +776,8 @@ export class ElementPicker {
     this.progressSteps = steps; // 更新保存的步骤列表
 
     steps.forEach((step) => {
-      const stepEl = this.aiDialog.querySelector(
-        `[data-step='${step.id}']`,
+      const stepEl = this.aiDialog!.querySelector(
+        `[data-step='${step.id}']`
       ) as HTMLElement;
       if (stepEl) {
         // 更新图标
@@ -822,29 +791,6 @@ export class ElementPicker {
         stepEl.classList.add(step.status);
       }
     });
-  }
-
-  /**
-   * 更新当前步骤的文本（用于细粒度进度）
-   *
-   * @param message - 进度消息
-   */
-  private updateCurrentStep(message: string): void {
-    if (!this.aiDialog) return;
-
-    // 找到当前 running 的步骤
-    const runningStep = this.progressSteps.find((s) => s.status === 'running');
-    if (runningStep) {
-      const stepEl = this.aiDialog.querySelector(
-        `[data-step='${runningStep.id}']`,
-      ) as HTMLElement;
-      if (stepEl) {
-        const labelEl = stepEl.querySelector('.step-label');
-        if (labelEl) {
-          labelEl.textContent = message;
-        }
-      }
-    }
   }
 
   /**
@@ -1175,7 +1121,7 @@ export class ElementPicker {
       includeParent?: boolean;
       includeSiblings?: boolean;
       includeDesignSystem?: boolean;
-    } = {},
+    } = {}
   ): ElementInfo {
     if (!element) {
       return {
@@ -1431,66 +1377,6 @@ export class ElementPicker {
     });
 
     return matchCount / keyProps.length;
-  }
-
-  /**
-   * 显示loading状态
-   */
-  private showLoading(): void {
-    if (!this.aiDialog) return;
-
-    // 保存当前对话框内容
-    this.dialogContentBackup = this.aiDialog.innerHTML;
-
-    // 替换为loading状态
-    this.aiDialog.innerHTML = `
-      <div style='
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        min-width: 200px;
-      '>
-        <div class='picker-spinner' style='
-          width: 32px;
-          height: 32px;
-          border: 3px solid #3e3e3e;
-          border-top-color: #2196F3;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        '></div>
-        <div style='
-          margin-top: 12px;
-          font-size: 14px;
-          color: #d4d4d4;
-        '>AI正在思考...</div>
-      </div>
-      <style>
-        @keyframes spin {
-          to {transform: rotate(360deg); }
-        }
-      </style>
-    `;
-
-    // 禁用所有交互
-    this.aiDialog.style.pointerEvents = 'none';
-  }
-
-  /**
-   * 隐藏loading状态
-   */
-  private hideLoading(): void {
-    // 恢复对话框内容
-    if (this.aiDialog && this.dialogContentBackup) {
-      this.aiDialog.innerHTML = this.dialogContentBackup;
-      this.aiDialog.style.pointerEvents = 'auto';
-
-      // 重新绑定input元素
-      this.dialogInput = this.aiDialog.querySelector(
-        "input[type='text']"
-      ) as HTMLInputElement;
-    }
   }
 
   /**
