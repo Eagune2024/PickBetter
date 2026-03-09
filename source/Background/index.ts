@@ -133,27 +133,28 @@ async function handleAIModification(
 /**
  * 监听来自 Content Script 的消息
  */
-browser.runtime.onMessage.addListener((message: unknown, sender) => {
-  const msg = message as ExtensionMessage;
+browser.runtime.onMessage.addListener(
+  (message: unknown, sender: browser.Runtime.MessageSender) => {
+    const msg = message as ExtensionMessage;
 
-  if (msg.type === 'OPEN_OPTIONS') {
-    console.log('[Background] 收到打开选项页请求');
-    // 打开选项页
-    if (browser.runtime?.openOptionsPage) {
-      browser.runtime.openOptionsPage().catch((error) => {
-        console.error('[Background] 打开选项页失败:', error);
+    if (msg.type === 'OPEN_OPTIONS') {
+      console.log('[Background] 收到打开选项页请求');
+      // 打开选项页
+      if (browser.runtime?.openOptionsPage) {
+        browser.runtime.openOptionsPage().catch((error) => {
+          console.error('[Background] 打开选项页失败:', error);
+        });
+      }
+    } else if (msg.type === 'REQUEST_AI_MODIFICATION') {
+      // 处理AI修改请求（异步）
+      handleAIModification(msg, sender).catch((error) => {
+        console.error('[Background] 处理AI修改请求失败:', error);
       });
     }
-  } else if (msg.type === 'REQUEST_AI_MODIFICATION') {
-    // 处理AI修改请求（异步）
-    handleAIModification(msg, sender).catch((error) => {
-      console.error('[Background] 处理AI修改请求失败:', error);
-    });
+    // 返回 true 表示异步响应
+    return true;
   }
-
-  // 返回 true 表示异步响应
-  return true;
-});
+);
 
 // 扩展安装/更新时的日志
 browser.runtime.onInstalled.addListener((): void => {

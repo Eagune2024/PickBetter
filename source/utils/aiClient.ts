@@ -423,7 +423,9 @@ ${elementInfo.outerHTML}
       // 提取JSON部分（处理可能的前后文本）
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
       const jsonStr = jsonMatch ? jsonMatch[1] : content;
-
+      if (!jsonStr) {
+        throw new Error('AI响应中没有找到有效JSON');
+      }
       // 解析JSON
       const parsed = JSON.parse(jsonStr);
 
