@@ -12,9 +12,9 @@
  */
 
 import browser from 'webextension-polyfill';
-import type { ElementInfo } from '../types/operations';
-import { OperationExecutor } from '../utils/operationExecutor';
-import { StyleAnalyzer } from '../utils/styleAnalyzer';
+import type {ElementInfo} from '../types/operations';
+import {OperationExecutor} from '../utils/operationExecutor';
+import {StyleAnalyzer} from '../utils/styleAnalyzer';
 
 /**
  * 进度步骤状态
@@ -258,12 +258,12 @@ export class ElementPicker {
     document.addEventListener('mouseover', this.handleMouseOver, {
       capture: true,
     });
-    document.addEventListener('click', this.handleClick, { capture: true });
+    document.addEventListener('click', this.handleClick, {capture: true});
     document.addEventListener('keydown', this.handleKeyDown, {
       capture: true,
     });
     // Prevent scrolling when picker is active
-    document.addEventListener('wheel', this.handleWheel, { passive: false });
+    document.addEventListener('wheel', this.handleWheel, {passive: false});
     document.addEventListener('touchmove', this.handleTouchMove, {
       passive: false,
     });
@@ -451,7 +451,7 @@ export class ElementPicker {
   /**
    * Calculate smart position for info label
    */
-  private calculateLabelPosition(rect: DOMRect): { x: number; y: number } {
+  private calculateLabelPosition(rect: DOMRect): {x: number; y: number} {
     // Estimate label dimensions
     const labelWidth = 150;
     const labelHeight = 50;
@@ -459,10 +459,10 @@ export class ElementPicker {
 
     // Candidate positions: right-top, right-bottom, left-top, left-bottom
     const candidates = [
-      { x: rect.right + gap, y: rect.top },
-      { x: rect.right + gap, y: rect.bottom - labelHeight },
-      { x: rect.left - labelWidth - gap, y: rect.top },
-      { x: rect.left - labelWidth - gap, y: rect.bottom - labelHeight },
+      {x: rect.right + gap, y: rect.top},
+      {x: rect.right + gap, y: rect.bottom - labelHeight},
+      {x: rect.left - labelWidth - gap, y: rect.top},
+      {x: rect.left - labelWidth - gap, y: rect.bottom - labelHeight},
     ];
 
     // Viewport dimensions
@@ -484,7 +484,7 @@ export class ElementPicker {
     }
 
     // Fallback: place inside element at top-left
-    return { x: rect.left, y: rect.top };
+    return {x: rect.left, y: rect.top};
   }
 
   /**
@@ -504,7 +504,7 @@ export class ElementPicker {
    * @param rect - The bounding rectangle of the selected element
    * @returns Object with x and y coordinates for dialog placement
    */
-  private calculateDialogPosition(rect: DOMRect): { x: number; y: number } {
+  private calculateDialogPosition(rect: DOMRect): {x: number; y: number} {
     // Dialog dimensions
     const dialogWidth = 300;
     const dialogHeight = 120;
@@ -512,10 +512,10 @@ export class ElementPicker {
 
     // Candidate positions: right-top, right-bottom, left-top, left-bottom
     const candidates = [
-      { x: rect.right + gap, y: rect.top },
-      { x: rect.right + gap, y: rect.bottom - dialogHeight },
-      { x: rect.left - dialogWidth - gap, y: rect.top },
-      { x: rect.left - dialogWidth - gap, y: rect.bottom - dialogHeight },
+      {x: rect.right + gap, y: rect.top},
+      {x: rect.right + gap, y: rect.bottom - dialogHeight},
+      {x: rect.left - dialogWidth - gap, y: rect.top},
+      {x: rect.left - dialogWidth - gap, y: rect.bottom - dialogHeight},
     ];
 
     // Viewport dimensions
@@ -537,7 +537,7 @@ export class ElementPicker {
     }
 
     // Fallback: place inside element at top-left
-    return { x: rect.left, y: rect.top };
+    return {x: rect.left, y: rect.top};
   }
 
   /**
@@ -547,13 +547,13 @@ export class ElementPicker {
     tagName: string;
     id?: string;
     className?: string;
-    dimensions: { width: number; height: number };
+    dimensions: {width: number; height: number};
     textContent?: string;
   } {
     if (!element) {
       return {
         tagName: '',
-        dimensions: { width: 0, height: 0 },
+        dimensions: {width: 0, height: 0},
       };
     }
 
@@ -691,18 +691,18 @@ export class ElementPicker {
   private generateSteps(needsDeepAnalysis: boolean): ProgressStep[] {
     if (needsDeepAnalysis) {
       return [
-        { id: 'extract', label: '提取元素信息', status: 'pending' },
-        { id: 'parent', label: '提取父元素信息', status: 'pending' },
-        { id: 'siblings', label: '分析兄弟元素', status: 'pending' },
-        { id: 'layout', label: '分析页面布局', status: 'pending' },
-        { id: 'ai', label: 'AI 正在思考...', status: 'pending' },
-        { id: 'apply', label: '应用修改', status: 'pending' },
+        {id: 'extract', label: '提取元素信息', status: 'pending' },
+        {id: 'parent', label: '提取父元素信息', status: 'pending' },
+        {id: 'siblings', label: '分析兄弟元素', status: 'pending' },
+        {id: 'layout', label: '分析页面布局', status: 'pending' },
+        {id: 'ai', label: 'AI 正在思考...', status: 'pending' },
+        {id: 'apply', label: '应用修改', status: 'pending' },
       ];
     } else {
       return [
-        { id: 'extract', label: '提取元素信息', status: 'pending' },
-        { id: 'ai', label: 'AI 正在思考...', status: 'pending' },
-        { id: 'apply', label: '应用修改', status: 'pending' },
+        {id: 'extract', label: '提取元素信息', status: 'pending' },
+        {id: 'ai', label: 'AI 正在思考...', status: 'pending' },
+        {id: 'apply', label: '应用修改', status: 'pending' },
       ];
     }
   }
@@ -1468,7 +1468,7 @@ export class ElementPicker {
       </div>
       <style>
         @keyframes spin {
-          to { transform: rotate(360deg); }
+          to {transform: rotate(360deg); }
         }
       </style>
     `;
@@ -1687,7 +1687,7 @@ export const stopPicker = (): void => {
 browser.runtime.onMessage.addListener((message: unknown) => {
   const msg = message as {
     type: string;
-    payload: { operations?: unknown[]; error?: string };
+    payload: {operations?: unknown[]; error?: string};
   };
 
   if (msg.type === 'APPLY_OPERATIONS') {
