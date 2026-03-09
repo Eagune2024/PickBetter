@@ -12,9 +12,9 @@
  */
 
 import browser from 'webextension-polyfill';
-import type {ElementInfo} from '../types/operations';
-import {OperationExecutor} from '../utils/operationExecutor';
-import {StyleAnalyzer} from '../utils/styleAnalyzer';
+import type { ElementInfo } from '../types/operations';
+import { OperationExecutor } from '../utils/operationExecutor';
+import { StyleAnalyzer } from '../utils/styleAnalyzer';
 
 /**
  * 进度步骤状态
@@ -165,9 +165,9 @@ export class ElementPicker {
    * Create the AI dialog DOM element structure
    *
    * Creates a floating dialog with:
-   * - Title: "如何调整此元素?"
+   * - Title: '如何调整此元素?'
    * - Input field for user prompt
-   * - Hint text: "按 Enter 提交，ESC 取消"
+   * - Hint text: '按 Enter 提交，ESC 取消'
    *
    * The dialog is styled with inline CSS to ensure it displays correctly
    * on any website, regardless of existing page styles.
@@ -258,12 +258,12 @@ export class ElementPicker {
     document.addEventListener('mouseover', this.handleMouseOver, {
       capture: true,
     });
-    document.addEventListener('click', this.handleClick, {capture: true});
+    document.addEventListener('click', this.handleClick, { capture: true });
     document.addEventListener('keydown', this.handleKeyDown, {
       capture: true,
     });
     // Prevent scrolling when picker is active
-    document.addEventListener('wheel', this.handleWheel, {passive: false});
+    document.addEventListener('wheel', this.handleWheel, { passive: false });
     document.addEventListener('touchmove', this.handleTouchMove, {
       passive: false,
     });
@@ -451,7 +451,7 @@ export class ElementPicker {
   /**
    * Calculate smart position for info label
    */
-  private calculateLabelPosition(rect: DOMRect): {x: number; y: number} {
+  private calculateLabelPosition(rect: DOMRect): { x: number; y: number } {
     // Estimate label dimensions
     const labelWidth = 150;
     const labelHeight = 50;
@@ -459,10 +459,10 @@ export class ElementPicker {
 
     // Candidate positions: right-top, right-bottom, left-top, left-bottom
     const candidates = [
-      {x: rect.right + gap, y: rect.top},
-      {x: rect.right + gap, y: rect.bottom - labelHeight},
-      {x: rect.left - labelWidth - gap, y: rect.top},
-      {x: rect.left - labelWidth - gap, y: rect.bottom - labelHeight},
+      { x: rect.right + gap, y: rect.top },
+      { x: rect.right + gap, y: rect.bottom - labelHeight },
+      { x: rect.left - labelWidth - gap, y: rect.top },
+      { x: rect.left - labelWidth - gap, y: rect.bottom - labelHeight },
     ];
 
     // Viewport dimensions
@@ -484,7 +484,7 @@ export class ElementPicker {
     }
 
     // Fallback: place inside element at top-left
-    return {x: rect.left, y: rect.top};
+    return { x: rect.left, y: rect.top };
   }
 
   /**
@@ -504,7 +504,7 @@ export class ElementPicker {
    * @param rect - The bounding rectangle of the selected element
    * @returns Object with x and y coordinates for dialog placement
    */
-  private calculateDialogPosition(rect: DOMRect): {x: number; y: number} {
+  private calculateDialogPosition(rect: DOMRect): { x: number; y: number } {
     // Dialog dimensions
     const dialogWidth = 300;
     const dialogHeight = 120;
@@ -512,10 +512,10 @@ export class ElementPicker {
 
     // Candidate positions: right-top, right-bottom, left-top, left-bottom
     const candidates = [
-      {x: rect.right + gap, y: rect.top},
-      {x: rect.right + gap, y: rect.bottom - dialogHeight},
-      {x: rect.left - dialogWidth - gap, y: rect.top},
-      {x: rect.left - dialogWidth - gap, y: rect.bottom - dialogHeight},
+      { x: rect.right + gap, y: rect.top },
+      { x: rect.right + gap, y: rect.bottom - dialogHeight },
+      { x: rect.left - dialogWidth - gap, y: rect.top },
+      { x: rect.left - dialogWidth - gap, y: rect.bottom - dialogHeight },
     ];
 
     // Viewport dimensions
@@ -537,7 +537,7 @@ export class ElementPicker {
     }
 
     // Fallback: place inside element at top-left
-    return {x: rect.left, y: rect.top};
+    return { x: rect.left, y: rect.top };
   }
 
   /**
@@ -547,13 +547,13 @@ export class ElementPicker {
     tagName: string;
     id?: string;
     className?: string;
-    dimensions: {width: number; height: number};
+    dimensions: { width: number; height: number };
     textContent?: string;
   } {
     if (!element) {
       return {
         tagName: '',
-        dimensions: {width: 0, height: 0},
+        dimensions: { width: 0, height: 0 },
       };
     }
 
@@ -581,14 +581,14 @@ export class ElementPicker {
     const height = Math.round(rect.height);
 
     // First line: tag name and dimensions
-    let html = `<span style="color: #569CD6;">${this.escapeHtml(tagName)}</span> `;
-    html += `<span style="color: #b5cea8;">${width}x${height}</span>`;
+    let html = `<span style='color: #569CD6;'>${this.escapeHtml(tagName)}</span> `;
+    html += `<span style='color: #b5cea8;'>${width}x${height}</span>`;
 
     // Second line: ID and class names (if any)
     if (target.id || target.className) {
       html += '<div>';
       if (target.id) {
-        html += `<span style="color: #DCDCAA;">#${this.escapeHtml(target.id)}</span> `;
+        html += `<span style='color: #DCDCAA;'>#${this.escapeHtml(target.id)}</span> `;
       }
       if (target.className && typeof target.className === 'string') {
         const classes = target.className
@@ -597,7 +597,7 @@ export class ElementPicker {
           .map((c) => `.${this.escapeHtml(c)}`)
           .join(' ');
         if (classes) {
-          html += `<span style="color: #CE9178;">${classes}</span>`;
+          html += `<span style='color: #CE9178;'>${classes}</span>`;
         }
       }
       html += '</div>';
@@ -739,15 +739,15 @@ export class ElementPicker {
     this.progressSteps = steps; // 保存步骤列表
 
     this.aiDialog.innerHTML = `
-      <div class="progress-container">
+      <div class='progress-container'>
         ${steps
           .map(
             (step) => `
-          <div class="progress-step ${step.status}" data-step="${step.id}">
-            <span class="step-icon">${this.getStepIcon(step.status)}</span>
-            <span class="step-label">${step.label}</span>
+          <div class='progress-step ${step.status}' data-step='${step.id}'>
+            <span class='step-icon'>${this.getStepIcon(step.status)}</span>
+            <span class='step-label'>${step.label}</span>
           </div>
-        `
+        `,
           )
           .join('')}
       </div>
@@ -808,7 +808,7 @@ export class ElementPicker {
 
     steps.forEach((step) => {
       const stepEl = this.aiDialog.querySelector(
-        `[data-step="${step.id}"]`
+        `[data-step='${step.id}']`,
       ) as HTMLElement;
       if (stepEl) {
         // 更新图标
@@ -836,7 +836,7 @@ export class ElementPicker {
     const runningStep = this.progressSteps.find((s) => s.status === 'running');
     if (runningStep) {
       const stepEl = this.aiDialog.querySelector(
-        `[data-step="${runningStep.id}"]`
+        `[data-step='${runningStep.id}']`,
       ) as HTMLElement;
       if (stepEl) {
         const labelEl = stepEl.querySelector('.step-label');
@@ -864,23 +864,23 @@ export class ElementPicker {
 
     // 显示错误对话框
     this.aiDialog.innerHTML = `
-      <div style="
+      <div style='
         padding: 16px;
         min-width: 280px;
-      ">
-        <div style="
+      '>
+        <div style='
           font-size: 16px;
           color: #f44336;
           margin-bottom: 8px;
           font-weight: 500;
-        ">❌ 处理失败</div>
-        <div style="
+        '>❌ 处理失败</div>
+        <div style='
           font-size: 13px;
           color: #d4d4d4;
           margin-bottom: 16px;
           line-height: 1.5;
-        ">${this.escapeHtml(message)}</div>
-        <button id="closeErrorBtn" style="
+        '>${this.escapeHtml(message)}</div>
+        <button id='closeErrorBtn' style='
           width: 100%;
           padding: 8px 12px;
           border: none;
@@ -889,7 +889,7 @@ export class ElementPicker {
           color: #d4d4d4;
           font-size: 14px;
           cursor: pointer;
-        ">关闭</button>
+        '>关闭</button>
       </div>
     `;
 
@@ -926,150 +926,154 @@ export class ElementPicker {
 
     console.log('[ElementPicker] AI Prompt:', prompt);
 
+    // 判断是否需要深度分析
+    const needsDeepAnalysis = this.isFuzzyPrompt(prompt);
+    console.log('[ElementPicker] 是否需要深度分析:', needsDeepAnalysis);
+
+    // 生成步骤列表
+    const steps = this.generateSteps(needsDeepAnalysis);
+
+    // 立即显示进度 UI
+    this.showProgressSteps(steps);
+
+    // 微任务：让浏览器有机会渲染 UI
+    await Promise.resolve();
+
+    // === 步骤 1：提取元素信息 ===
+    steps[0].status = 'running';
+    this.updateProgressSteps(steps);
+
+    // 微任务：让浏览器更新状态
+    await Promise.resolve();
+
+    let elementInfo: ElementInfo;
     try {
-      // 判断是否需要深度分析
-      const needsDeepAnalysis = this.isFuzzyPrompt(prompt);
-      console.log('[ElementPicker] 是否需要深度分析:', needsDeepAnalysis);
+      elementInfo = this.extractElementInfo(this.selectedElement, {
+        includeParent: needsDeepAnalysis,
+        includeSiblings: needsDeepAnalysis,
+        includeDesignSystem: needsDeepAnalysis,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : '提取元素信息失败';
+      this.showErrorInSteps(errorMessage);
+      this.isSubmitting = false;
+      return;
+    }
 
-      // 生成步骤列表
-      const steps = this.generateSteps(needsDeepAnalysis);
+    steps[0].status = 'completed';
+    this.updateProgressSteps(steps);
 
-      // 立即显示进度 UI
-      this.showProgressSteps(steps);
-
-      // 微任务：让浏览器有机会渲染 UI
-      await Promise.resolve();
-
-      // === 步骤 1：提取元素信息 ===
-      steps[0].status = 'running';
+    // === 模糊指令：额外步骤 ===
+    if (needsDeepAnalysis) {
+      // 步骤 2：提取父元素
+      steps[1].status = 'running';
       this.updateProgressSteps(steps);
-
-      // 微任务：让浏览器更新状态
       await Promise.resolve();
 
-      let elementInfo: ElementInfo;
       try {
-        elementInfo = this.extractElementInfo(this.selectedElement, {
-          includeParent: needsDeepAnalysis,
-          includeSiblings: needsDeepAnalysis,
-          includeDesignSystem: needsDeepAnalysis,
-        });
+        // 父元素信息已在 extractElementInfo 中提取
+        // 这里只是标记为完成
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : '提取元素信息失败';
-        this.showErrorInSteps(errorMessage);
+        steps[1].status = 'failed';
+        this.updateProgressSteps(steps);
+        this.isSubmitting = false;
         return;
       }
 
-      steps[0].status = 'completed';
+      steps[1].status = 'completed';
       this.updateProgressSteps(steps);
 
-      // === 模糊指令：额外步骤 ===
-      if (needsDeepAnalysis) {
-        // 步骤 2：提取父元素
-        steps[1].status = 'running';
+      // 步骤 3：分析兄弟元素
+      steps[2].status = 'running';
+      this.updateProgressSteps(steps);
+      await Promise.resolve();
+
+      try {
+        // 兄弟元素信息已在 extractElementInfo 中提取
+      } catch (error) {
+        steps[2].status = 'failed';
         this.updateProgressSteps(steps);
-        await Promise.resolve();
-
-        try {
-          // 父元素信息已在 extractElementInfo 中提取
-          // 这里只是标记为完成
-        } catch (error) {
-          steps[1].status = 'failed';
-          this.updateProgressSteps(steps);
-          return;
-        }
-
-        steps[1].status = 'completed';
-        this.updateProgressSteps(steps);
-
-        // 步骤 3：分析兄弟元素
-        steps[2].status = 'running';
-        this.updateProgressSteps(steps);
-        await Promise.resolve();
-
-        try {
-          // 兄弟元素信息已在 extractElementInfo 中提取
-        } catch (error) {
-          steps[2].status = 'failed';
-          this.updateProgressSteps(steps);
-          return;
-        }
-
-        steps[2].status = 'completed';
-        this.updateProgressSteps(steps);
-
-        // 步骤 4：分析页面布局
-        steps[3].status = 'running';
-        this.updateProgressSteps(steps);
-        await Promise.resolve();
-
-        // 设计系统分析已在 extractElementInfo 中完成
-        steps[3].status = 'completed';
-        this.updateProgressSteps(steps);
-
-        // 更新 AI 步骤索引
-        const aiStepIndex = 4;
-        const applyStepIndex = 5;
-
-        // 步骤 5：AI 正在思考
-        steps[aiStepIndex].status = 'running';
-        this.updateProgressSteps(steps);
-        await Promise.resolve();
-
-        try {
-          // 发送请求
-          await browser.runtime.sendMessage({
-            type: 'REQUEST_AI_MODIFICATION',
-            payload: {
-              prompt,
-              elementInfo,
-            },
-          });
-
-          console.log('[ElementPicker] 已发送AI请求到Background');
-          // 不等待响应，由消息监听器处理
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : '发送请求失败';
-          steps[aiStepIndex].status = 'failed';
-          this.updateProgressSteps(steps);
-          this.showErrorInSteps(errorMessage);
-          return;
-        }
-      } else {
-        // === 明确指令：简化流程 ===
-        // 更新 AI 步骤索引
-        const aiStepIndex = 1;
-        const applyStepIndex = 2;
-
-        // 步骤 2：AI 正在思考
-        steps[aiStepIndex].status = 'running';
-        this.updateProgressSteps(steps);
-        await Promise.resolve();
-
-        try {
-          // 发送请求
-          await browser.runtime.sendMessage({
-            type: 'REQUEST_AI_MODIFICATION',
-            payload: {
-              prompt,
-              elementInfo,
-            },
-          });
-
-          console.log('[ElementPicker] 已发送AI请求到Background');
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : '发送请求失败';
-          steps[aiStepIndex].status = 'failed';
-          this.updateProgressSteps(steps);
-          this.showErrorInSteps(errorMessage);
-          return;
-        }
+        this.isSubmitting = false;
+        return;
       }
-    } finally {
-      this.isSubmitting = false;
+
+      steps[2].status = 'completed';
+      this.updateProgressSteps(steps);
+
+      // 步骤 4：分析页面布局
+      steps[3].status = 'running';
+      this.updateProgressSteps(steps);
+      await Promise.resolve();
+
+      // 设计系统分析已在 extractElementInfo 中完成
+      steps[3].status = 'completed';
+      this.updateProgressSteps(steps);
+
+      // 更新 AI 步骤索引
+      const aiStepIndex = 4;
+      const applyStepIndex = 5;
+
+      // 步骤 5：AI 正在思考
+      steps[aiStepIndex].status = 'running';
+      this.updateProgressSteps(steps);
+      await Promise.resolve();
+
+      try {
+        // 发送请求
+        await browser.runtime.sendMessage({
+          type: 'REQUEST_AI_MODIFICATION',
+          payload: {
+            prompt,
+            elementInfo,
+          },
+        });
+
+        console.log('[ElementPicker] 已发送AI请求到Background');
+        // 不等待响应，由消息监听器处理
+        // 注意：isSubmitting 会在收到响应后重置
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : '发送请求失败';
+        steps[aiStepIndex].status = 'failed';
+        this.updateProgressSteps(steps);
+        this.showErrorInSteps(errorMessage);
+        this.isSubmitting = false;
+        return;
+      }
+    } else {
+      // === 明确指令：简化流程 ===
+      // 更新 AI 步骤索引
+      const aiStepIndex = 1;
+      const applyStepIndex = 2;
+
+      // 步骤 2：AI 正在思考
+      steps[aiStepIndex].status = 'running';
+      this.updateProgressSteps(steps);
+      await Promise.resolve();
+
+      try {
+        // 发送请求
+        await browser.runtime.sendMessage({
+          type: 'REQUEST_AI_MODIFICATION',
+          payload: {
+            prompt,
+            elementInfo,
+          },
+        });
+
+        console.log('[ElementPicker] 已发送AI请求到Background');
+        // 不等待响应，由消息监听器处理
+        // 注意：isSubmitting 会在收到响应后重置
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : '发送请求失败';
+        steps[aiStepIndex].status = 'failed';
+        this.updateProgressSteps(steps);
+        this.showErrorInSteps(errorMessage);
+        this.isSubmitting = false;
+        return;
+      }
     }
   }
 
@@ -1171,7 +1175,7 @@ export class ElementPicker {
       includeParent?: boolean;
       includeSiblings?: boolean;
       includeDesignSystem?: boolean;
-    } = {}
+    } = {},
   ): ElementInfo {
     if (!element) {
       return {
@@ -1440,27 +1444,27 @@ export class ElementPicker {
 
     // 替换为loading状态
     this.aiDialog.innerHTML = `
-      <div style="
+      <div style='
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         padding: 24px;
         min-width: 200px;
-      ">
-        <div class="picker-spinner" style="
+      '>
+        <div class='picker-spinner' style='
           width: 32px;
           height: 32px;
           border: 3px solid #3e3e3e;
           border-top-color: #2196F3;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
-        "></div>
-        <div style="
+        '></div>
+        <div style='
           margin-top: 12px;
           font-size: 14px;
           color: #d4d4d4;
-        ">AI正在思考...</div>
+        '>AI正在思考...</div>
       </div>
       <style>
         @keyframes spin {
@@ -1484,7 +1488,7 @@ export class ElementPicker {
 
       // 重新绑定input元素
       this.dialogInput = this.aiDialog.querySelector(
-        'input[type="text"]'
+        "input[type='text']"
       ) as HTMLInputElement;
     }
   }
@@ -1496,22 +1500,22 @@ export class ElementPicker {
     if (!this.aiDialog) return;
 
     this.aiDialog.innerHTML = `
-      <div style="
+      <div style='
         padding: 16px;
         min-width: 280px;
-      ">
-        <div style="
+      '>
+        <div style='
           font-size: 16px;
           color: #4caf50;
           margin-bottom: 8px;
           font-weight: 500;
-        ">✓ 修改成功</div>
-        <div style="
+        '>✓ 修改成功</div>
+        <div style='
           font-size: 13px;
           color: #d4d4d4;
           margin-bottom: 16px;
-        ">元素已按照您的要求修改</div>
-        <button id="closeSuccessBtn" style="
+        '>元素已按照您的要求修改</div>
+        <button id='closeSuccessBtn' style='
           width: 100%;
           padding: 8px 12px;
           border: none;
@@ -1520,7 +1524,7 @@ export class ElementPicker {
           color: white;
           font-size: 14px;
           cursor: pointer;
-        ">继续选择</button>
+        '>继续选择</button>
       </div>
     `;
 
@@ -1540,23 +1544,23 @@ export class ElementPicker {
     if (!this.aiDialog) return;
 
     this.aiDialog.innerHTML = `
-      <div style="
+      <div style='
         padding: 16px;
         min-width: 280px;
-      ">
-        <div style="
+      '>
+        <div style='
           font-size: 16px;
           color: #f44336;
           margin-bottom: 8px;
           font-weight: 500;
-        ">❌ 修改失败</div>
-        <div style="
+        '>❌ 修改失败</div>
+        <div style='
           font-size: 13px;
           color: #d4d4d4;
           margin-bottom: 16px;
           line-height: 1.5;
-        ">${this.escapeHtml(error)}</div>
-        <button id="closeErrorBtn" style="
+        '>${this.escapeHtml(error)}</div>
+        <button id='closeErrorBtn' style='
           width: 100%;
           padding: 8px 12px;
           border: none;
@@ -1565,7 +1569,7 @@ export class ElementPicker {
           color: #d4d4d4;
           font-size: 14px;
           cursor: pointer;
-        ">关闭</button>
+        '>关闭</button>
       </div>
     `;
 
@@ -1584,6 +1588,7 @@ export class ElementPicker {
     if (!this.selectedElement) {
       console.error('[ElementPicker] 没有选中的元素');
       this.showError('元素不存在');
+      this.isSubmitting = false;
       return;
     }
 
@@ -1611,6 +1616,9 @@ export class ElementPicker {
       console.error('[ElementPicker] 执行操作失败:', errorMessage);
       this.showError(errorMessage);
     }
+
+    // 操作处理完成，重置 isSubmitting
+    this.isSubmitting = false;
   }
 
   /**
@@ -1679,7 +1687,7 @@ export const stopPicker = (): void => {
 browser.runtime.onMessage.addListener((message: unknown) => {
   const msg = message as {
     type: string;
-    payload: {operations?: unknown[]; error?: string};
+    payload: { operations?: unknown[]; error?: string };
   };
 
   if (msg.type === 'APPLY_OPERATIONS') {
@@ -1689,6 +1697,8 @@ browser.runtime.onMessage.addListener((message: unknown) => {
       // 有错误，显示错误信息
       if (pickerInstance) {
         pickerInstance['showError'](msg.payload.error);
+        // 错误处理完成，重置 isSubmitting
+        pickerInstance['isSubmitting'] = false;
       }
     } else if (msg.payload.operations) {
       // 有操作指令，执行操作
