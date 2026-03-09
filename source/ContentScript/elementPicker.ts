@@ -17,6 +17,20 @@ import {OperationExecutor} from '../utils/operationExecutor';
 import {StyleAnalyzer} from '../utils/styleAnalyzer';
 
 /**
+ * 进度步骤状态
+ */
+type ProgressStepStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+/**
+ * 进度步骤
+ */
+interface ProgressStep {
+  id: string;
+  label: string;
+  status: ProgressStepStatus;
+}
+
+/**
  * Picker state type definition
  * - IDLE: Picker is not active
  * - PICKING: User is selecting an element
@@ -38,6 +52,7 @@ export class ElementPicker {
   private state: PickerState = 'IDLE';
   private currentElement: HTMLElement | null = null;
   private selectedElement: HTMLElement | null = null;
+  private isSubmitting: boolean = false; // 防止重复提交
 
   // Overlay DOM elements
   private overlayContainer: HTMLElement | null = null;
@@ -48,6 +63,9 @@ export class ElementPicker {
   private aiDialog: HTMLElement | null = null;
   private dialogInput: HTMLInputElement | null = null;
   private dialogContentBackup: string | null = null; // 备份对话框内容用于恢复
+
+  // 进度步骤
+  private progressSteps: ProgressStep[] = []; // 保存当前步骤列表
 
   // Event handlers bound to the instance
   private readonly handleMouseOver: (e: MouseEvent) => void;
@@ -665,14 +683,231 @@ export class ElementPicker {
   }
 
   /**
+   * 生成进度步骤列表
+   *
+   * @param needsDeepAnalysis - 是否需要深度分析
+   * @returns 步骤数组
+   */
+  private generateSteps(needsDeepAnalysis: boolean): ProgressStep[] {
+    if (needsDeepAnalysis) {
+      return [
+        { id: 'extract', label: '提取元素信息', status: 'pending' },
+        { id: 'parent', label: '提取父元素信息', status: 'pending' },
+        { id: 'siblings', label: '分析兄弟元素', status: 'pending' },
+        { id: 'layout', label: '分析页面布局', status: 'pending' },
+        { id: 'ai', label: 'AI 正在思考...', status: 'pending' },
+        { id: 'apply', label: '应用修改', status: 'pending' },
+      ];
+    } else {
+      return [
+        { id: 'extract', label: '提取元素信息', status: 'pending' },
+        { id: 'ai', label: 'AI 正在思考...', status: 'pending' },
+        { id: 'apply', label: '应用修改', status: 'pending' },
+      ];
+    }
+  }
+
+  /**
+   * 获取步骤图标
+   *
+   * @param status - 步骤状态
+   * @returns 图标字符
+   */
+  private getStepIcon(status: ProgressStepStatus): string {
+    switch (status) {
+      case 'pending':
+        return '○';
+      case 'running':
+        return '⏳';
+      case 'completed':
+        return '✓';
+      case 'failed':
+        return '✗';
+      default:
+        return '○';
+    }
+  }
+
+  /**
+   * 显示进度步骤列表
+   *
+   * @param steps - 步骤数组
+   */
+  private showProgressSteps(steps: ProgressStep[]): void {
+    if (!this.aiDialog) return;
+
+    this.progressSteps = steps; // 保存步骤列表
+
+    this.aiDialog.innerHTML = `
+      <div class="progress-container">
+        ${steps
+          .map(
+            (step) => `
+          <div class="progress-step ${step.status}" data-step="${step.id}">
+            <span class="step-icon">${this.getStepIcon(step.status)}</span>
+            <span class="step-label">${step.label}</span>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+      <style>
+        .progress-container {
+          padding: 16px;
+          min-width: 300px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .progress-step {
+          display: flex;
+          align-items: center;
+          padding: 8px 0;
+          font-size: 14px;
+          line-height: 1.4;
+          transition: all 0.3s ease;
+        }
+        .progress-step.completed {
+          color: #4caf50;
+          opacity: 0.7;
+        }
+        .progress-step.running {
+          color: #2196F3;
+          font-weight: 500;
+        }
+        .progress-step.pending {
+          color: #888;
+        }
+        .progress-step.failed {
+          color: #f44336;
+        }
+        .step-icon {
+          margin-right: 12px;
+          width: 20px;
+          text-align: center;
+        }
+        .progress-step.running .step-icon {
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      </style>
+    `;
+  }
+
+  /**
+   * 更新进度步骤状态
+   *
+   * @param steps - 步骤数组
+   */
+  private updateProgressSteps(steps: ProgressStep[]): void {
+    if (!this.aiDialog) return;
+
+    this.progressSteps = steps; // 更新保存的步骤列表
+
+    steps.forEach((step) => {
+      const stepEl = this.aiDialog.querySelector(
+        `[data-step="${step.id}"]`
+      ) as HTMLElement;
+      if (stepEl) {
+        // 更新图标
+        const iconEl = stepEl.querySelector('.step-icon');
+        if (iconEl) {
+          iconEl.textContent = this.getStepIcon(step.status);
+        }
+
+        // 更新状态类
+        stepEl.classList.remove('pending', 'running', 'completed', 'failed');
+        stepEl.classList.add(step.status);
+      }
+    });
+  }
+
+  /**
+   * 更新当前步骤的文本（用于细粒度进度）
+   *
+   * @param message - 进度消息
+   */
+  private updateCurrentStep(message: string): void {
+    if (!this.aiDialog) return;
+
+    // 找到当前 running 的步骤
+    const runningStep = this.progressSteps.find((s) => s.status === 'running');
+    if (runningStep) {
+      const stepEl = this.aiDialog.querySelector(
+        `[data-step="${runningStep.id}"]`
+      ) as HTMLElement;
+      if (stepEl) {
+        const labelEl = stepEl.querySelector('.step-label');
+        if (labelEl) {
+          labelEl.textContent = message;
+        }
+      }
+    }
+  }
+
+  /**
+   * 显示错误在步骤中
+   *
+   * @param message - 错误消息
+   */
+  private showErrorInSteps(message: string): void {
+    if (!this.aiDialog) return;
+
+    // 找到当前 running 的步骤并标记为失败
+    const runningStep = this.progressSteps.find((s) => s.status === 'running');
+    if (runningStep) {
+      runningStep.status = 'failed';
+      this.updateProgressSteps(this.progressSteps);
+    }
+
+    // 显示错误对话框
+    this.aiDialog.innerHTML = `
+      <div style="
+        padding: 16px;
+        min-width: 280px;
+      ">
+        <div style="
+          font-size: 16px;
+          color: #f44336;
+          margin-bottom: 8px;
+          font-weight: 500;
+        ">❌ 处理失败</div>
+        <div style="
+          font-size: 13px;
+          color: #d4d4d4;
+          margin-bottom: 16px;
+          line-height: 1.5;
+        ">${this.escapeHtml(message)}</div>
+        <button id="closeErrorBtn" style="
+          width: 100%;
+          padding: 8px 12px;
+          border: none;
+          border-radius: 4px;
+          background: #3e3e3e;
+          color: #d4d4d4;
+          font-size: 14px;
+          cursor: pointer;
+        ">关闭</button>
+      </div>
+    `;
+
+    const closeBtn = this.aiDialog.querySelector('#closeErrorBtn');
+    closeBtn?.addEventListener('click', () => {
+      this.cancelAiDialog();
+    });
+  }
+
+  /**
    * 处理 AI prompt 提交
    *
    * 此方法在用户按 Enter 时调用：
-   * 1. 检索 prompt 文本
-   * 2. 判断是否需要深度分析
-   * 3. 提取元素信息（根据模糊度决定深度）
-   * 4. 发送请求到 Background Script
-   * 5. 显示 loading 状态
+   * 1. 防止重复提交
+   * 2. 生成步骤列表
+   * 3. 显示进度 UI
+   * 4. 使用微任务调度逐步执行
+   * 5. 发送请求到 Background Script
    */
   private async submitAiPrompt(): Promise<void> {
     const prompt = this.dialogInput?.value || '';
@@ -681,38 +916,160 @@ export class ElementPicker {
       return;
     }
 
+    // 防止重复提交
+    if (this.isSubmitting) {
+      console.warn('[ElementPicker] 正在提交中，忽略重复请求');
+      return;
+    }
+
+    this.isSubmitting = true;
+
     console.log('[ElementPicker] AI Prompt:', prompt);
 
-    // 判断是否需要深度分析
-    const needsDeepAnalysis = this.isFuzzyPrompt(prompt);
-
-    console.log('[ElementPicker] 是否需要深度分析:', needsDeepAnalysis);
-
-    // 提取元素信息
-    const elementInfo = this.extractElementInfo(this.selectedElement, {
-      includeParent: needsDeepAnalysis, // 阶段2
-      includeSiblings: needsDeepAnalysis, // 阶段2
-      includeDesignSystem: needsDeepAnalysis, // 阶段3
-    });
-
     try {
-      // 构建并发送请求
-      await browser.runtime.sendMessage({
-        type: 'REQUEST_AI_MODIFICATION',
-        payload: {
-          prompt,
-          elementInfo,
-        },
-      });
+      // 判断是否需要深度分析
+      const needsDeepAnalysis = this.isFuzzyPrompt(prompt);
+      console.log('[ElementPicker] 是否需要深度分析:', needsDeepAnalysis);
 
-      console.log('[ElementPicker] 已发送AI请求到Background');
+      // 生成步骤列表
+      const steps = this.generateSteps(needsDeepAnalysis);
 
-      // 显示loading状态
-      this.showLoading();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      console.error('[ElementPicker] 发送AI请求失败:', errorMessage);
-      this.showError('发送请求失败，请重试');
+      // 立即显示进度 UI
+      this.showProgressSteps(steps);
+
+      // 微任务：让浏览器有机会渲染 UI
+      await Promise.resolve();
+
+      // === 步骤 1：提取元素信息 ===
+      steps[0].status = 'running';
+      this.updateProgressSteps(steps);
+
+      // 微任务：让浏览器更新状态
+      await Promise.resolve();
+
+      let elementInfo: ElementInfo;
+      try {
+        elementInfo = this.extractElementInfo(this.selectedElement, {
+          includeParent: needsDeepAnalysis,
+          includeSiblings: needsDeepAnalysis,
+          includeDesignSystem: needsDeepAnalysis,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : '提取元素信息失败';
+        this.showErrorInSteps(errorMessage);
+        return;
+      }
+
+      steps[0].status = 'completed';
+      this.updateProgressSteps(steps);
+
+      // === 模糊指令：额外步骤 ===
+      if (needsDeepAnalysis) {
+        // 步骤 2：提取父元素
+        steps[1].status = 'running';
+        this.updateProgressSteps(steps);
+        await Promise.resolve();
+
+        try {
+          // 父元素信息已在 extractElementInfo 中提取
+          // 这里只是标记为完成
+        } catch (error) {
+          steps[1].status = 'failed';
+          this.updateProgressSteps(steps);
+          return;
+        }
+
+        steps[1].status = 'completed';
+        this.updateProgressSteps(steps);
+
+        // 步骤 3：分析兄弟元素
+        steps[2].status = 'running';
+        this.updateProgressSteps(steps);
+        await Promise.resolve();
+
+        try {
+          // 兄弟元素信息已在 extractElementInfo 中提取
+        } catch (error) {
+          steps[2].status = 'failed';
+          this.updateProgressSteps(steps);
+          return;
+        }
+
+        steps[2].status = 'completed';
+        this.updateProgressSteps(steps);
+
+        // 步骤 4：分析页面布局
+        steps[3].status = 'running';
+        this.updateProgressSteps(steps);
+        await Promise.resolve();
+
+        // 设计系统分析已在 extractElementInfo 中完成
+        steps[3].status = 'completed';
+        this.updateProgressSteps(steps);
+
+        // 更新 AI 步骤索引
+        const aiStepIndex = 4;
+        const applyStepIndex = 5;
+
+        // 步骤 5：AI 正在思考
+        steps[aiStepIndex].status = 'running';
+        this.updateProgressSteps(steps);
+        await Promise.resolve();
+
+        try {
+          // 发送请求
+          await browser.runtime.sendMessage({
+            type: 'REQUEST_AI_MODIFICATION',
+            payload: {
+              prompt,
+              elementInfo,
+            },
+          });
+
+          console.log('[ElementPicker] 已发送AI请求到Background');
+          // 不等待响应，由消息监听器处理
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : '发送请求失败';
+          steps[aiStepIndex].status = 'failed';
+          this.updateProgressSteps(steps);
+          this.showErrorInSteps(errorMessage);
+          return;
+        }
+      } else {
+        // === 明确指令：简化流程 ===
+        // 更新 AI 步骤索引
+        const aiStepIndex = 1;
+        const applyStepIndex = 2;
+
+        // 步骤 2：AI 正在思考
+        steps[aiStepIndex].status = 'running';
+        this.updateProgressSteps(steps);
+        await Promise.resolve();
+
+        try {
+          // 发送请求
+          await browser.runtime.sendMessage({
+            type: 'REQUEST_AI_MODIFICATION',
+            payload: {
+              prompt,
+              elementInfo,
+            },
+          });
+
+          console.log('[ElementPicker] 已发送AI请求到Background');
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : '发送请求失败';
+          steps[aiStepIndex].status = 'failed';
+          this.updateProgressSteps(steps);
+          this.showErrorInSteps(errorMessage);
+          return;
+        }
+      }
+    } finally {
+      this.isSubmitting = false;
     }
   }
 
