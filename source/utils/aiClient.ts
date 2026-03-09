@@ -74,7 +74,8 @@ export class AIClient {
   private buildPrompt(request: ModificationRequest): string {
     const {prompt, elementInfo} = request;
 
-    return `
+    // 基础信息部分
+    let promptText = `
 你是一个Web元素修改助手。用户希望对页面元素进行修改。
 
 【用户的请求】
@@ -85,8 +86,65 @@ ${prompt}
 ${elementInfo.id ? `ID: ${elementInfo.id}` : ''}
 ${elementInfo.className ? `类名: ${elementInfo.className}` : ''}
 文本内容: ${elementInfo.textContent?.slice(0, 100) || ''}
-当前样式: ${JSON.stringify(elementInfo.computedStyles, null, 2)}
 
+【当前样式】
+${this.formatStyles(elementInfo.computedStyles)}
+`;
+
+    // 阶段2：添加层级上下文
+    if (elementInfo.parentContext) {
+      promptText += `
+【父元素信息】
+标签: ${elementInfo.parentContext.tagName}
+${elementInfo.parentContext.className ? `类名: ${elementInfo.parentContext.className}` : ''}
+样式:
+${this.formatStyles(elementInfo.parentContext.computedStyles)}
+`;
+    }
+
+    if (elementInfo.siblingContext && elementInfo.siblingContext.length > 0) {
+      promptText += `
+【相似兄弟元素】
+${elementInfo.siblingContext
+  .map(
+    (sib) => `
+- 标签: ${sib.tagName}
+  相似度: ${(sib.similarity * 100).toFixed(0)}%
+  样式:
+${this.formatStyles(sib.computedStyles)}
+`
+  )
+  .join('')}
+`;
+    }
+
+    // 阶段3：添加设计系统信息
+    if (elementInfo.pageDesignSystem) {
+      const ds = elementInfo.pageDesignSystem;
+      promptText += `
+【页面设计系统】
+
+配色方案：
+- 主色调: ${ds.colorPalette.primary.join(', ') || '未检测到'}
+- 背景色: ${ds.colorPalette.background.join(', ') || '未检测到'}
+- 文本色: ${ds.colorPalette.text.join(', ') || '未检测到'}
+
+字体系统：
+- 字体家族: ${ds.typography.fontFamilies.join(', ') || '未检测到'}
+- 常用字号: ${ds.typography.fontSizeScale.map((s) => `${s}px`).join(', ') || '未检测到'}
+- 常用字重: ${ds.typography.fontWeightScale.join(', ') || '未检测到'}
+
+间距系统：
+- 常用间距: ${ds.spacing.commonValues.map((v) => `${v}px`).join(', ') || '未检测到'}
+- 基础单位: ${ds.spacing.rhythmUnit}px
+
+圆角系统：
+- 常用圆角: ${ds.borderRadius.commonValues.map((v) => `${v}px`).join(', ') || '未检测到'}
+`;
+    }
+
+    // HTML片段和操作指令部分
+    promptText += `
 【HTML片段】
 \`\`\`html
 ${elementInfo.outerHTML}
@@ -124,6 +182,40 @@ ${elementInfo.outerHTML}
 }
 \`\`\`
 `;
+
+    return promptText;
+  }
+
+  /**
+   * 格式化样式信息为易于阅读的文本
+   *
+   * @param styles - 样式对象
+   * @returns 格式化的样式字符串
+   */
+  private formatStyles(styles: Record<string, string>): string {
+    // 定义最重要的样式属性（视觉感知相关）
+    const importantStyles = [
+      'color',
+      'backgroundColor',
+      'fontSize',
+      'fontWeight',
+      'fontFamily',
+      'padding',
+      'margin',
+      'border',
+      'borderRadius',
+      'boxShadow',
+      'display',
+    ];
+
+    let result = '';
+    importantStyles.forEach((prop) => {
+      if (styles[prop]) {
+        result += `\n  ${prop}: ${styles[prop]};`;
+      }
+    });
+
+    return result || '{}';
   }
 
   /**

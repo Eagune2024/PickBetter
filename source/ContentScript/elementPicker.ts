@@ -14,6 +14,7 @@
 import browser from 'webextension-polyfill';
 import type {ElementInfo} from '../types/operations';
 import {OperationExecutor} from '../utils/operationExecutor';
+import {StyleAnalyzer} from '../utils/styleAnalyzer';
 
 /**
  * Picker state type definition
@@ -664,13 +665,14 @@ export class ElementPicker {
   }
 
   /**
-   * Handle AI prompt submission
+   * 处理 AI prompt 提交
    *
-   * This method is called when the user presses Enter in the dialog:
-   * 1. Retrieves the prompt text from the input field
-   * 2. Extracts element information
-   * 3. Sends request to Background Script
-   * 4. Shows loading state
+   * 此方法在用户按 Enter 时调用：
+   * 1. 检索 prompt 文本
+   * 2. 判断是否需要深度分析
+   * 3. 提取元素信息（根据模糊度决定深度）
+   * 4. 发送请求到 Background Script
+   * 5. 显示 loading 状态
    */
   private async submitAiPrompt(): Promise<void> {
     const prompt = this.dialogInput?.value || '';
@@ -681,8 +683,17 @@ export class ElementPicker {
 
     console.log('[ElementPicker] AI Prompt:', prompt);
 
+    // 判断是否需要深度分析
+    const needsDeepAnalysis = this.isFuzzyPrompt(prompt);
+
+    console.log('[ElementPicker] 是否需要深度分析:', needsDeepAnalysis);
+
     // 提取元素信息
-    const elementInfo = this.extractElementInfo(this.selectedElement);
+    const elementInfo = this.extractElementInfo(this.selectedElement, {
+      includeParent: needsDeepAnalysis, // 阶段2
+      includeSiblings: needsDeepAnalysis, // 阶段2
+      includeDesignSystem: needsDeepAnalysis, // 阶段3
+    });
 
     try {
       // 构建并发送请求
@@ -706,12 +717,105 @@ export class ElementPicker {
   }
 
   /**
+   * 判断用户指令是否模糊
+   *
+   * @param prompt - 用户指令
+   * @returns true 表示模糊指令，false 表示明确指令
+   */
+  private isFuzzyPrompt(prompt: string): boolean {
+    const lowerPrompt = prompt.toLowerCase();
+
+    // 明确的属性关键词
+    const specificKeywords = [
+      '颜色',
+      '背景',
+      '字体',
+      '文字',
+      '大小',
+      '尺寸',
+      '边距',
+      '圆角',
+      '边框',
+      '阴影',
+      '透明度',
+      '宽度',
+      '高度',
+      'padding',
+      'margin',
+      'border',
+      'color',
+      'background',
+      'font',
+      'size',
+      'width',
+      'height',
+      'delete',
+      'remove',
+      '删除',
+      '隐藏',
+      '显示',
+      '添加',
+    ];
+
+    // 模糊的目标关键词
+    const fuzzyKeywords = [
+      '现代',
+      '时尚',
+      '复古',
+      '简洁',
+      '简约',
+      '华丽',
+      '扁平',
+      '立体',
+      '优雅',
+      '专业',
+      '友好',
+      '严肃',
+      '活泼',
+      '更好',
+      '更差',
+      '更美',
+      '更协调',
+      '更统一',
+      '更突出',
+      '更低调',
+      '更醒目',
+      '优化',
+      '改进',
+      '提升',
+      '改善',
+      '美化',
+      'modern',
+      'elegant',
+      'minimal',
+      'consistent',
+      'prominent',
+    ];
+
+    const hasSpecific = specificKeywords.some((kw) => lowerPrompt.includes(kw));
+    const hasFuzzy = fuzzyKeywords.some((kw) => lowerPrompt.includes(kw));
+
+    // 如果有明确的属性修改，不算模糊
+    if (hasSpecific && !hasFuzzy) return false;
+
+    return hasFuzzy;
+  }
+
+  /**
    * 提取元素信息
    *
    * @param element - HTML元素
+   * @param options - 可选参数
    * @returns 元素信息对象
    */
-  private extractElementInfo(element: HTMLElement | null): ElementInfo {
+  private extractElementInfo(
+    element: HTMLElement | null,
+    options: {
+      includeParent?: boolean;
+      includeSiblings?: boolean;
+      includeDesignSystem?: boolean;
+    } = {}
+  ): ElementInfo {
     if (!element) {
       return {
         tagName: '',
@@ -722,27 +826,83 @@ export class ElementPicker {
 
     const computedStyles = window.getComputedStyle(element);
 
-    // 提取常用的CSS属性
+    // 提取扩展的CSS属性（50+个）
     const styleProps = [
+      // === 颜色系统 ===
       'color',
       'backgroundColor',
+      'borderColor',
+      'outlineColor',
+      'boxShadow', // 包含颜色信息
+
+      // === 排版系统 ===
+      'fontFamily',
       'fontSize',
       'fontWeight',
-      'padding',
-      'margin',
-      'border',
-      'borderRadius',
+      'fontStyle',
+      'lineHeight',
+      'letterSpacing',
+      'textAlign',
+      'textDecoration',
+      'textTransform',
+      'verticalAlign',
+
+      // === 布局系统 ===
+      'display',
+      'position',
+      'flexDirection',
+      'justifyContent',
+      'alignItems',
+      'gap',
+      'gridTemplateColumns',
+      'gridTemplateRows',
+
+      // === 尺寸系统 ===
       'width',
       'height',
-      'display',
+      'minWidth',
+      'minHeight',
+      'maxWidth',
+      'maxHeight',
+      'padding',
+      'paddingTop',
+      'paddingRight',
+      'paddingBottom',
+      'paddingLeft',
+      'margin',
+      'marginTop',
+      'marginRight',
+      'marginBottom',
+      'marginLeft',
+
+      // === 边框和圆角 ===
+      'border',
+      'borderRadius',
+      'borderTopLeftRadius',
+      'borderTopRightRadius',
+      'borderBottomLeftRadius',
+      'borderBottomRightRadius',
+
+      // === 视觉效果 ===
+      'boxShadow',
+      'opacity',
+      'filter',
+
+      // === 交互状态 ===
+      'cursor',
+      'transition',
+      'transform',
     ];
 
     const styles: Record<string, string> = {};
     styleProps.forEach((prop) => {
-      styles[prop] = computedStyles.getPropertyValue(prop);
+      const value = computedStyles.getPropertyValue(prop);
+      if (value) {
+        styles[prop] = value;
+      }
     });
 
-    return {
+    const baseInfo: ElementInfo = {
       tagName: element.tagName,
       id: element.id || undefined,
       className: element.className || undefined,
@@ -750,6 +910,166 @@ export class ElementPicker {
       textContent: element.textContent?.slice(0, 100), // 截断到100字符
       computedStyles: styles,
     };
+
+    // 阶段2：层级上下文
+    if (options.includeParent) {
+      baseInfo.parentContext = this.extractParentContext(element);
+    }
+
+    if (options.includeSiblings) {
+      baseInfo.siblingContext = this.extractSiblingContext(element);
+    }
+
+    // 阶段3：设计系统分析
+    if (options.includeDesignSystem) {
+      const analyzer = new StyleAnalyzer();
+      baseInfo.pageDesignSystem = analyzer.analyzePageDesignSystem();
+    }
+
+    return baseInfo;
+  }
+
+  /**
+   * 提取父元素上下文
+   *
+   * @param element - HTML元素
+   * @returns 父元素信息或undefined
+   */
+  private extractParentContext(element: HTMLElement | null):
+    | {
+        tagName: string;
+        className?: string;
+        computedStyles: Record<string, string>;
+      }
+    | undefined {
+    if (!element) return undefined;
+    const parent = element.parentElement;
+    if (!parent) return undefined;
+
+    const computedStyles = window.getComputedStyle(parent);
+    const styles: Record<string, string> = {};
+
+    // 提取关键样式属性（与 extractElementInfo 相同）
+    const styleProps = [
+      'color',
+      'backgroundColor',
+      'fontSize',
+      'fontWeight',
+      'fontFamily',
+      'padding',
+      'margin',
+      'border',
+      'borderRadius',
+      'boxShadow',
+      'display',
+    ];
+
+    styleProps.forEach((prop) => {
+      const value = computedStyles.getPropertyValue(prop);
+      if (value) {
+        styles[prop] = value;
+      }
+    });
+
+    return {
+      tagName: parent.tagName,
+      className: parent.className || undefined,
+      computedStyles: styles,
+    };
+  }
+
+  /**
+   * 提取兄弟元素上下文
+   *
+   * @param element - HTML元素
+   * @returns 兄弟元素信息数组
+   */
+  private extractSiblingContext(element: HTMLElement | null): Array<{
+    tagName: string;
+    className?: string;
+    computedStyles: Record<string, string>;
+    similarity: number;
+  }> {
+    if (!element) return [];
+
+    const parent = element.parentElement;
+    if (!parent) return [];
+
+    const siblings = Array.from(parent.children)
+      .filter((child) => child !== element)
+      .slice(0, 5) as HTMLElement[];
+
+    const siblingContext = siblings.map((sibling) => {
+      const computedStyles = window.getComputedStyle(sibling);
+      const styles: Record<string, string> = {};
+
+      // 提取关键样式属性
+      const styleProps = [
+        'color',
+        'backgroundColor',
+        'fontSize',
+        'fontWeight',
+        'fontFamily',
+        'padding',
+        'margin',
+        'border',
+        'borderRadius',
+        'boxShadow',
+        'display',
+      ];
+
+      styleProps.forEach((prop) => {
+        const value = computedStyles.getPropertyValue(prop);
+        if (value) {
+          styles[prop] = value;
+        }
+      });
+
+      return {
+        tagName: sibling.tagName,
+        className: sibling.className || undefined,
+        computedStyles: styles,
+        similarity: this.calculateSimilarity(element, sibling),
+      };
+    });
+
+    // 按相似度降序排序，只保留相似度 > 0.3 的
+    return siblingContext
+      .sort((a, b) => b.similarity - a.similarity)
+      .filter((item) => item.similarity > 0.3);
+  }
+
+  /**
+   * 计算两个元素的样式相似度
+   *
+   * @param elem1 - 第一个元素
+   * @param elem2 - 第二个元素
+   * @returns 相似度值（0-1之间）
+   */
+  private calculateSimilarity(elem1: HTMLElement, elem2: HTMLElement): number {
+    const style1 = window.getComputedStyle(elem1);
+    const style2 = window.getComputedStyle(elem2);
+
+    // 比较关键样式属性
+    const keyProps = [
+      'display',
+      'color',
+      'backgroundColor',
+      'fontSize',
+      'fontWeight',
+      'borderRadius',
+      'padding',
+      'margin',
+    ];
+
+    let matchCount = 0;
+    keyProps.forEach((prop) => {
+      if (style1.getPropertyValue(prop) === style2.getPropertyValue(prop)) {
+        matchCount++;
+      }
+    });
+
+    return matchCount / keyProps.length;
   }
 
   /**

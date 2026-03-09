@@ -4,19 +4,19 @@
 
 ## 1. 阶段 1：扩展元素样式信息
 
-- [ ] 1.1 扩展 ElementInfo 类型定义
+- [x] 1.1 扩展 ElementInfo 类型定义
   - 在 `source/types/operations.ts` 中扩展 ElementInfo 接口
   - 添加可选字段：parentContext, siblingContext, pageDesignSystem
   - 添加相关的类型定义：ParentElementInfo, SiblingElementInfo, PageDesignSystem
   - 验收标准：TypeScript 编译通过，类型定义完整
 
-- [ ] 1.2 扩展样式属性列表
+- [x] 1.2 扩展样式属性列表
   - 在 `source/ContentScript/elementPicker.ts` 的 `extractElementInfo` 方法中
   - 将 styleProps 从 11 个扩展到 50+ 个属性
   - 添加：颜色、排版、布局、尺寸、边框、视觉效果、交互状态相关属性
   - 验收标准：提取的样式包含所有新增属性，性能 <10ms
 
-- [ ] 1.3 添加样式格式化方法
+- [x] 1.3 添加样式格式化方法
   - 实现 `formatStyles` 私有方法
   - 过滤空值和默认值，只展示有意义的样式
   - 格式化为易于阅读的键值对形式
@@ -24,31 +24,33 @@
 
 ## 2. 阶段 2：添加层级上下文
 
-- [ ] 2.1 实现父元素上下文提取
+- [x] 2.1 实现父元素上下文提取
   - 实现 `extractParentContext` 私有方法
   - 提取父元素的 tagName, className, computedStyles
   - 处理无父元素的情况（返回 undefined）
   - 验收标准：正确提取父元素信息，边界情况处理正确
 
-- [ ] 2.2 实现兄弟元素上下文提取
+- [x] 2.2 实现兄弟元素上下文提取
   - 实现 `extractSiblingContext` 私有方法
   - 获取同父元素下的所有子元素
   - 限制只分析前 5 个兄弟元素
   - 验收标准：正确提取兄弟元素信息，数量限制生效
 
-- [ ] 2.3 实现样式相似度计算
+- [x] 2.3 实现样式相似度计算
   - 实现 `calculateSimilarity` 私有方法
   - 比较 8 个关键样式属性
   - 返回 0-1 之间的相似度值
   - 验收标准：相似度计算准确，按相似度排序
 
-- [ ] 2.4 优化 extractElementInfo 方法
+- [x] 2.4 优化 extractElementInfo 方法
+
+- [x] 2.5 更新 buildPrompt 方法（暂时跳过）
   - 添加 options 参数：includeParent, includeSiblings
   - 根据参数决定是否提取层级上下文
   - 保持向后兼容（默认不提取）
   - 验收标准：方法支持可选参数，默认行为不变
 
-- [ ] 2.5 更新 buildPrompt 方法
+- [x] 2.5 更新 buildPrompt 方法（层级上下文）
   - 在 `source/utils/aiClient.ts` 的 `buildPrompt` 方法中
   - 添加父元素信息格式化
   - 添加兄弟元素信息格式化（包含相似度）
@@ -56,50 +58,50 @@
 
 ## 3. 阶段 3：设计系统分析
 
-- [ ] 3.1 创建 StyleAnalyzer 类
+- [x] 3. 创建 StyleAnalyzer 类
   - 创建 `source/utils/styleAnalyzer.ts` 文件
   - 定义 StyleAnalyzer 类结构
   - 定义所有方法的签名
   - 验收标准：文件创建成功，TypeScript 编译通过
 
-- [ ] 3.2 实现配色方案分析
+- [x] 3. 实现配色方案分析
   - 实现 `analyzeColorPalette` 方法
   - 扫描按钮、链接、卡片等元素提取颜色
   - 实现 `deduplicateColors` 和 `normalizeColor` 辅助方法
   - 限制返回数量（primary/secondary: 5个，background/text: 3-5个，border: 3个）
   - 验收标准：正确提取配色方案，颜色去重规范化
 
-- [ ] 3.3 实现字体系统分析
+- [x] 3. 实现字体系统分析
   - 实现 `analyzeTypographySystem` 方法
   - 提取字体家族、字号、字重、行高
   - 去重、排序、限制数量
   - 验收标准：正确提取字体系统信息
 
-- [ ] 3.4 实现间距系统分析
+- [x] 3. 实现间距系统分析
   - 实现 `analyzeSpacingSystem` 方法
   - 提取 padding 和 margin 值
   - 推断基础间距单位
   - 验收标准：正确识别常用间距和基础单位
 
-- [ ] 3.5 实现圆角系统分析
+- [x] 3. 实现圆角系统分析
   - 实现 `analyzeBorderRadiusSystem` 方法
   - 提取常用圆角值
   - 去重、排序、限制数量
   - 验收标准：正确识别常用圆角值
 
-- [ ] 3.6 实现阴影系统分析
+- [x] 3. 实现阴影系统分析
   - 实现 `analyzeBoxShadowSystem` 方法
   - 提取常用阴影模式
   - 去重、限制数量
   - 验收标准：正确识别阴影模式字符串
 
-- [ ] 3.7 集成设计系统分析到 ElementPicker
+- [x] 3. 集成设计系统分析到 ElementPicker
   - 在 `elementPicker.ts` 中导入 StyleAnalyzer
   - 在 `extractElementInfo` 中调用设计系统分析
   - 添加 includeDesignSystem 参数支持
   - 验收标准：设计系统信息被正确提取和包含
 
-- [ ] 3.8 更新 buildPrompt 包含设计系统
+- [x] 3. 更新 buildPrompt 包含设计系统
   - 在 `buildPrompt` 方法中添加设计系统信息格式化
   - 包含配色、字体、间距、圆角、阴影系统摘要
   - 格式化为清晰的文本结构
@@ -107,14 +109,14 @@
 
 ## 4. 阶段 4：智能触发和集成
 
-- [ ] 4.1 实现模糊指令检测
+- [x] 4.1 实现模糊指令检测
   - 在 `elementPicker.ts` 中实现 `isFuzzyPrompt` 私有方法
   - 定义 SPECIFIC_KEYWORDS 和 FUZZY_KEYWORDS 列表
   - 实现关键词匹配逻辑
   - 处理混合指令（明确关键词优先）
   - 验收标准：正确判断明确/模糊指令，边界情况处理正确
 
-- [ ] 4.2 更新 submitAiPrompt 方法
+- [x] 4.2 更新 submitAiPrompt 方法
   - 调用 `isFuzzyPrompt` 判断指令类型
   - 根据判断结果设置 options 参数
   - 明确指令：基础样式信息
@@ -148,7 +150,7 @@
   - 验证样式提取在两个浏览器上一致
   - 验收标准：两个浏览器功能正常
 
-- [ ] 4.7 代码审查和清理
+- [x] 4.7 代码审查和清理
   - 运行 `npm run lint` 检查代码风格
   - 运行 `npm run lint:fix` 自动修复
   - 添加必要的注释

@@ -113,16 +113,97 @@ export interface ExecutionResult {
 }
 
 /**
+ * 父元素信息
+ */
+export interface ParentElementInfo {
+  tagName: string;
+  className?: string;
+  computedStyles: Record<string, string>;
+}
+
+/**
+ * 兄弟元素信息
+ */
+export interface SiblingElementInfo {
+  tagName: string;
+  className?: string;
+  computedStyles: Record<string, string>;
+  similarity: number;
+}
+
+/**
+ * 配色方案
+ */
+export interface ColorPalette {
+  primary: string[];
+  secondary: string[];
+  background: string[];
+  text: string[];
+  border: string[];
+}
+
+/**
+ * 字体系统
+ */
+export interface TypographySystem {
+  fontFamilies: string[];
+  fontSizeScale: number[];
+  fontWeightScale: number[];
+  lineHeights: number[];
+}
+
+/**
+ * 间距系统
+ */
+export interface SpacingSystem {
+  commonValues: number[];
+  rhythmUnit: number;
+}
+
+/**
+ * 圆角系统
+ */
+export interface BorderRadiusSystem {
+  commonValues: number[];
+}
+
+/**
+ * 阴影系统
+ */
+export interface BoxShadowSystem {
+  commonPatterns: string[];
+}
+
+/**
+ * 页面设计系统
+ */
+export interface PageDesignSystem {
+  colorPalette: ColorPalette;
+  typography: TypographySystem;
+  spacing: SpacingSystem;
+  borderRadius: BorderRadiusSystem;
+  boxShadow: BoxShadowSystem;
+}
+
+/**
  * 元素信息
  * 用于发送给AI的元素描述
  */
 export interface ElementInfo {
+  // === 基础信息 ===
   tagName: string;
   id?: string;
   className?: string;
   outerHTML: string;
   textContent?: string;
   computedStyles: Record<string, string>;
+
+  // === 阶段2+：可选的层级上下文 ===
+  parentContext?: ParentElementInfo;
+  siblingContext?: SiblingElementInfo[];
+
+  // === 阶段3：可选的设计系统 ===
+  pageDesignSystem?: PageDesignSystem;
 }
 
 /**
