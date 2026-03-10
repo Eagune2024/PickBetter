@@ -438,10 +438,12 @@ ${elementInfo.outerHTML}
         case 'openai':
         case 'zai':
         case 'custom':
-          content = response.choices?.[0]?.message?.content;
+          content =
+            (response as OpenAIStyleResponse).choices?.[0]?.message?.content ||
+            '';
           break;
         case 'claude':
-          content = response.content?.[0]?.text;
+          content = (response as ClaudeResponse).content?.[0]?.text || '';
           break;
         default:
           throw new Error(`不支持的provider: ${provider}`);
