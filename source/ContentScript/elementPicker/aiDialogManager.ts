@@ -28,11 +28,11 @@ export class AiDialogManager {
     this.overlayContainer = overlayContainer;
   }
 
-  setCancelCallback(callback: () => void) {
+  setCancelCallback(callback: () => void): void {
     this.onCancel = callback;
   }
 
-  setContinueCallback(callback: () => void) {
+  setContinueCallback(callback: () => void): void {
     this.onContinue = callback;
   }
 
