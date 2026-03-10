@@ -47,6 +47,7 @@ export class AiDialogManager {
   createAiDialog(): void {
     this.aiDialog = document.createElement('div');
     this.aiDialog.className = 'picker-ai-dialog';
+    this.aiDialog.setAttribute('data-pickbetter-plugin', 'true');
     this.aiDialog.style.cssText = `
       position: absolute;
       pointer-events: auto;

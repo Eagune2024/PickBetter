@@ -21,11 +21,13 @@ export class OverlayManager {
   createOverlay(): void {
     this.overlayContainer = document.createElement('div');
     this.overlayContainer.id = 'picker-overlay-root';
+    this.overlayContainer.setAttribute('data-pickbetter-plugin', 'true');
     this.overlayContainer.style.cssText =
       'position: fixed; top: 0; left: 0; width: 0; height: 0;';
 
     this.highlightOverlay = document.createElement('div');
     this.highlightOverlay.className = 'picker-highlight';
+    this.highlightOverlay.setAttribute('data-pickbetter-plugin', 'true');
     this.highlightOverlay.style.cssText = `
       position: absolute;
       pointer-events: none;
@@ -38,6 +40,7 @@ export class OverlayManager {
 
     this.infoLabel = document.createElement('div');
     this.infoLabel.className = 'picker-label';
+    this.infoLabel.setAttribute('data-pickbetter-plugin', 'true');
     this.infoLabel.style.cssText = `
       position: absolute;
       pointer-events: none;

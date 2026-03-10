@@ -82,11 +82,20 @@ export class PageSaver {
 
       const doc = document.cloneNode(true) as Document;
 
+      // 1.5. 移除插件 UI
+      await this.reportProgress(onProgress, {
+        stage: 'removing-plugin-ui',
+        message: '正在移除插件 UI...',
+        percentage: 5,
+      });
+
+      this.domProcessor.removePluginUI(doc);
+
       // 2. 处理 Canvas
       await this.reportProgress(onProgress, {
         stage: 'processing-canvas',
         message: '正在处理 Canvas 元素...',
-        percentage: 10,
+        percentage: 15,
       });
 
       this.domProcessor.convertCanvases(doc);
@@ -96,7 +105,7 @@ export class PageSaver {
         await this.reportProgress(onProgress, {
           stage: 'processing-shadow-dom',
           message: '正在处理 Shadow DOM...',
-          percentage: 20,
+          percentage: 25,
         });
 
         this.domProcessor.processShadowDOM(doc);
@@ -107,7 +116,7 @@ export class PageSaver {
         await this.reportProgress(onProgress, {
           stage: 'processing-frames',
           message: '正在处理 iframe...',
-          percentage: 30,
+          percentage: 35,
         });
 
         this.domProcessor.processFrames(doc);
@@ -117,7 +126,7 @@ export class PageSaver {
       await this.reportProgress(onProgress, {
         stage: 'processing-css',
         message: '正在处理 CSS...',
-        percentage: 40,
+        percentage: 45,
       });
 
       await this.cssProcessor.inlineCSS(doc);
@@ -126,7 +135,7 @@ export class PageSaver {
       await this.reportProgress(onProgress, {
         stage: 'processing-images',
         message: '正在转换图片...',
-        percentage: 50,
+        percentage: 55,
       });
 
       await this.imageProcessor.processAll(doc);
@@ -135,14 +144,14 @@ export class PageSaver {
       await this.reportProgress(onProgress, {
         stage: 'processing-images',
         message: `已处理 ${imageStats.unique} 张图片`,
-        percentage: 70,
+        percentage: 75,
       });
 
       // 7. 生成 HTML
       await this.reportProgress(onProgress, {
         stage: 'generating-html',
         message: '正在生成 HTML...',
-        percentage: 80,
+        percentage: 85,
       });
 
       const html = this.htmlGenerator.generate(doc);
@@ -152,7 +161,7 @@ export class PageSaver {
       await this.reportProgress(onProgress, {
         stage: 'downloading',
         message: '正在下载...',
-        percentage: 90,
+        percentage: 95,
       });
 
       await this.htmlGenerator.save(doc);

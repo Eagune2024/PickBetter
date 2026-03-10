@@ -32,6 +32,21 @@ export class DOMProcessor {
   }
 
   /**
+   * 移除插件 UI 元素
+   * 移除所有带有 data-pickbetter-plugin 属性的元素
+   */
+  removePluginUI(doc: Document): void {
+    const pluginElements = doc.querySelectorAll('[data-pickbetter-plugin]');
+    pluginElements.forEach((element) => {
+      element.remove();
+    });
+
+    console.log(
+      `[DOMProcessor] 已移除 ${pluginElements.length} 个插件 UI 元素`
+    );
+  }
+
+  /**
    * 处理 Canvas 元素
    */
   convertCanvases(doc: Document): void {
