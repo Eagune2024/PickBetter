@@ -23,6 +23,7 @@ export class AiDialogManager {
   private progressSteps: ProgressStep[] = [];
   private onCancel?: () => void;
   private onContinue?: () => void;
+  private onSavePage?: () => void;
 
   constructor(overlayContainer: HTMLElement | null) {
     this.overlayContainer = overlayContainer;
@@ -34,6 +35,10 @@ export class AiDialogManager {
 
   setContinueCallback(callback: () => void): void {
     this.onContinue = callback;
+  }
+
+  setSavePageCallback(callback: () => void): void {
+    this.onSavePage = callback;
   }
 
   /**
@@ -336,20 +341,43 @@ export class AiDialogManager {
           color: #d4d4d4;
           margin-bottom: 16px;
         '>元素已按照您的要求修改</div>
-        <button id='closeSuccessBtn' style='
-          width: 100%;
-          padding: 8px 12px;
-          border: none;
-          border-radius: 4px;
-          background: #2196F3;
-          color: white;
-          font-size: 14px;
-          cursor: pointer;
-        '>继续选择</button>
+        <div style='
+          display: flex;
+          gap: 8px;
+        '>
+          <button id='savePageBtn' style='
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #4caf50;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+          '>保存页面</button>
+          <button id='closeSuccessBtn' style='
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #2196F3;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+          '>继续选择</button>
+        </div>
       </div>
     `;
 
+    const saveBtn = this.aiDialog.querySelector(
+      '#savePageBtn'
+    ) as HTMLButtonElement;
     const closeBtn = this.aiDialog.querySelector('#closeSuccessBtn');
+
+    saveBtn?.addEventListener('click', () => {
+      this.onSavePage?.();
+    });
+
     closeBtn?.addEventListener('click', () => {
       this.hideAiDialog();
       this.onContinue?.();
@@ -405,5 +433,167 @@ export class AiDialogManager {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * 显示保存进度
+   */
+  showSavingProgress(message: string, percentage: number): void {
+    if (!this.aiDialog) return;
+
+    this.aiDialog.innerHTML = `
+      <div style='
+        padding: 16px;
+        min-width: 280px;
+      '>
+        <div style='
+          font-size: 16px;
+          color: #2196F3;
+          margin-bottom: 12px;
+          font-weight: 500;
+        '>⏳ 正在保存页面...</div>
+        <div style='
+          font-size: 13px;
+          color: #d4d4d4;
+          margin-bottom: 16px;
+        '>${this.escapeHtml(message)}</div>
+        <div style='
+          width: 100%;
+          height: 4px;
+          background: #3e3e3e;
+          border-radius: 2px;
+          overflow: hidden;
+          margin-bottom: 8px;
+        '>
+          <div style='
+            width: ${percentage}%;
+            height: 100%;
+            background: #2196F3;
+            transition: width 0.3s ease;
+          '></div>
+        </div>
+        <div style='
+          font-size: 12px;
+          color: #888;
+          text-align: center;
+        '>${percentage}%</div>
+      </div>
+    `;
+  }
+
+  /**
+   * 显示保存成功状态
+   */
+  showSaveSuccess(fileSize: string): void {
+    if (!this.aiDialog) return;
+
+    this.aiDialog.innerHTML = `
+      <div style='
+        padding: 16px;
+        min-width: 280px;
+      '>
+        <div style='
+          font-size: 16px;
+          color: #4caf50;
+          margin-bottom: 8px;
+          font-weight: 500;
+        '>✓ 保存成功</div>
+        <div style='
+          font-size: 13px;
+          color: #d4d4d4;
+          margin-bottom: 16px;
+        '>页面已保存,文件大小: ${this.escapeHtml(fileSize)}</div>
+        <button id='closeSaveSuccessBtn' style='
+          width: 100%;
+          padding: 8px 12px;
+          border: none;
+          border-radius: 4px;
+          background: #2196F3;
+          color: white;
+          font-size: 14px;
+          cursor: pointer;
+        '>关闭</button>
+      </div>
+    `;
+
+    const closeBtn = this.aiDialog.querySelector('#closeSaveSuccessBtn');
+    closeBtn?.addEventListener('click', () => {
+      this.hideAiDialog();
+    });
+  }
+
+  /**
+   * 显示保存失败状态
+   */
+  showSaveError(error: string): void {
+    if (!this.aiDialog) return;
+
+    this.aiDialog.innerHTML = `
+      <div style='
+        padding: 16px;
+        min-width: 280px;
+      '>
+        <div style='
+          font-size: 16px;
+          color: #f44336;
+          margin-bottom: 8px;
+          font-weight: 500;
+        '>❌ 保存失败</div>
+        <div style='
+          font-size: 13px;
+          color: #d4d4d4;
+          margin-bottom: 16px;
+          line-height: 1.5;
+        '>${this.escapeHtml(error)}</div>
+        <button id='closeSaveErrorBtn' style='
+          width: 100%;
+          padding: 8px 12px;
+          border: none;
+          border-radius: 4px;
+          background: #3e3e3e;
+          color: #d4d4d4;
+          font-size: 14px;
+          cursor: pointer;
+        '>关闭</button>
+      </div>
+    `;
+
+    const closeBtn = this.aiDialog.querySelector('#closeSaveErrorBtn');
+    closeBtn?.addEventListener('click', () => {
+      this.hideAiDialog();
+    });
+  }
+
+  /**
+   * 更新保存按钮状态
+   */
+  updateSaveButtonState(state: 'idle' | 'saving' | 'saved' | 'failed'): void {
+    const saveBtn = this.aiDialog?.querySelector(
+      '#savePageBtn'
+    ) as HTMLButtonElement;
+    if (!saveBtn) return;
+
+    switch (state) {
+      case 'idle':
+        saveBtn.disabled = false;
+        saveBtn.textContent = '保存页面';
+        saveBtn.style.background = '#4caf50';
+        break;
+      case 'saving':
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中...';
+        saveBtn.style.background = '#888';
+        break;
+      case 'saved':
+        saveBtn.disabled = true;
+        saveBtn.textContent = '已保存';
+        saveBtn.style.background = '#4caf50';
+        break;
+      case 'failed':
+        saveBtn.disabled = false;
+        saveBtn.textContent = '保存失败';
+        saveBtn.style.background = '#f44336';
+        break;
+    }
   }
 }

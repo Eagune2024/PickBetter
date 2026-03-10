@@ -17,6 +17,7 @@ import {OperationExecutor} from '../utils/operationExecutor';
 import {ElementInfoExtractor} from './elementPicker/elementInfoExtractor';
 import {AiDialogManager} from './elementPicker/aiDialogManager';
 import {OverlayManager, type PickerState} from './elementPicker/overlayManager';
+import {createPageSaver} from '../utils/pageSaver';
 
 /**
  * ElementPicker Class
@@ -245,6 +246,7 @@ class ElementPicker {
     this.aiDialogManager.setContinueCallback(() => {
       this.state = 'PICKING';
     });
+    this.aiDialogManager.setSavePageCallback(() => this.handleSavePage());
 
     const rect = target.getBoundingClientRect();
     const pos = this.overlayManager.calculateDialogPosition(rect);
@@ -254,6 +256,35 @@ class ElementPicker {
 
     this.selectedElement = target;
     this.state = 'SELECTED';
+  }
+
+  /**
+   * 处理保存页面
+   */
+  private async handleSavePage(): Promise<void> {
+    const pageSaver = createPageSaver();
+
+    this.aiDialogManager.updateSaveButtonState('saving');
+
+    try {
+      const result = await pageSaver.savePage((progress) => {
+        this.aiDialogManager.showSavingProgress(
+          progress.message || '',
+          progress.percentage
+        );
+      });
+
+      if (result.success) {
+        this.aiDialogManager.showSaveSuccess(result.fileSize || '未知');
+      } else {
+        this.aiDialogManager.showSaveError(result.error || '保存失败');
+        this.aiDialogManager.updateSaveButtonState('failed');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '保存失败';
+      this.aiDialogManager.showSaveError(errorMessage);
+      this.aiDialogManager.updateSaveButtonState('failed');
+    }
   }
 
   /**
