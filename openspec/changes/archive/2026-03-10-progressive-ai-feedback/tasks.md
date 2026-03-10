@@ -4,13 +4,13 @@
 
 ## 1. 基础结构改造
 
-- [ ] 1.1 添加类型定义
+- [x] 1.1 添加类型定义
   - 在 `source/ContentScript/elementPicker.ts` 中添加 `ProgressStep` 接口
   - 定义状态枚举类型：'pending' | 'running' | 'completed' | 'failed'
   - 添加 `isSubmitting` 私有属性
   - 验收标准：TypeScript 编译通过
 
-- [ ] 1.2 改造 submitAiPrompt 方法签名
+- [x] 1.2 改造 submitAiPrompt 方法签名
   - 将 `submitAiPrompt()` 从同步方法改为异步方法
   - 修改方法签名为 `async submitAiPrompt(): Promise<void>`
   - 添加 `if (this.isSubmitting) return;` 检查
@@ -19,39 +19,39 @@
 
 ## 2. 步骤生成逻辑
 
-- [ ] 2.1 实现动态步骤生成方法
+- [x] 2.1 实现动态步骤生成方法
   - 创建 `generateSteps(needsDeepAnalysis: boolean)` 私有方法
   - 明确指令返回 3 个步骤数组
   - 模糊指令返回 6 个步骤数组
   - 验收标准：根据参数返回正确的步骤数组
 
-- [ ] 2.2 集成步骤生成到 submitAiPrompt
+- [x] 2.2 集成步骤生成到 submitAiPrompt
   - 在 `submitAiPrompt` 开始时调用 `isFuzzyPrompt()`
   - 根据返回值调用 `generateSteps()` 生成步骤列表
   - 验收标准：步骤列表根据指令类型动态生成
 
 ## 3. UI 组件实现
 
-- [ ] 3.1 实现步骤图标获取方法
+- [x] 3.1 实现步骤图标获取方法
   - 创建 `getStepIcon(status: string)` 私有方法
   - 根据状态返回：○ / ⏳ / ✓ / ✗
   - 验收标准：返回正确的图标字符
 
-- [ ] 3.2 实现 showProgressSteps 方法
+- [x] 3.2 实现 showProgressSteps 方法
   - 创建 `showProgressSteps(steps: ProgressStep[])` 私有方法
   - 替换 `this.aiDialog.innerHTML` 显示步骤列表
   - 使用内联样式确保在所有页面正常显示
   - 添加 spinner 动画样式（`@keyframes spin`）
   - 验收标准：立即显示步骤列表，样式正确
 
-- [ ] 3.3 实现 updateProgressSteps 方法
+- [x] 3.3 实现 updateProgressSteps 方法
   - 创建 `updateProgressSteps(steps: ProgressStep[])` 私有方法
   - 使用 `querySelector('[data-step="..."]')` 精确定位步骤元素
   - 更新图标文本（通过 `getStepIcon()`）
   - 更新状态类（pending/running/completed/failed）
   - 验收标准：步骤状态正确更新
 
-- [ ] 3.4 实现 showProgressSteps 中的样式定义
+- [x] 3.4 实现 showProgressSteps 中的样式定义
   - 定义 `.progress-step` 基础样式
   - 定义 `.progress-step.completed` 样式（绿色、半透明）
   - 定义 `.progress-step.running` 样式（蓝色、加粗）
@@ -63,31 +63,31 @@
 
 ## 4. 核心执行流程
 
-- [ ] 4.1 改造 submitAiPrompt - 步骤 1
+- [x] 4.1 改造 submitAiPrompt - 步骤 1
   - 在方法开始立即调用 `showProgressSteps(steps)`
   - 在显示步骤后插入 `await Promise.resolve()`
   - 验收标准：用户立即看到步骤列表
 
-- [ ] 4.2 改造 submitAiPrompt - 步骤 2
+- [x] 4.2 改造 submitAiPrompt - 步骤 2
   - 更新第一步状态为 'running'
   - 调用 `updateProgressSteps(steps)`
   - 插入 `await Promise.resolve()`
   - 验收标准：第一步显示为进行中
 
-- [ ] 4.3 改造 submitAiPrompt - 步骤 3
+- [x] 4.3 改造 submitAiPrompt - 步骤 3
   - 执行 `extractElementInfo()`
   - 更新第一步状态为 'completed'
   - 调用 `updateProgressSteps(steps)`
   - 插入 `await Promise.resolve()`
   - 验收标准：第一步显示为完成
 
-- [ ] 4.4 改造 submitAiPrompt - 模糊指令分支
+- [x] 4.4 改造 submitAiPrompt - 模糊指令分支
   - 如果 `needsDeepAnalysis` 为 true
   - 依次处理：父元素、兄弟元素、设计系统分析
   - 每个步骤：running → 执行 → completed → updateProgressSteps → await Promise.resolve()
   - 验收标准：模糊指令的所有步骤依次完成
 
-- [ ] 4.5 改造 submitAiPrompt - 发送请求
+- [x] 4.5 改造 submitAiPrompt - 发送请求
   - 更新"AI 正在思考..."步骤为 'running'
   - 调用 `updateProgressSteps(steps)`
   - 发送 `browser.runtime.sendMessage()`
@@ -96,7 +96,7 @@
 
 ## 5. 消息监听器集成
 
-- [ ] 5.1 更新消息监听器处理响应
+- [x] 5.1 更新消息监听器处理响应
   - 在 `browser.runtime.onMessage.addListener` 中
   - 收到 `APPLY_OPERATIONS` 消息时
   - 更新"AI 正在思考..."步骤为 'completed'
@@ -104,13 +104,13 @@
   - 调用 `updateProgressSteps(steps)`
   - 验收标准：响应到达时步骤状态更新
 
-- [ ] 5.2 处理操作执行结果
+- [x] 5.2 处理操作执行结果
   - 在操作执行完成后
   - 更新"应用修改"步骤为 'completed'
   - 调用 `showSuccess()` 或 `showError()`
   - 验收标准：显示最终结果
 
-- [ ] 5.3 处理错误情况
+- [x] 5.3 处理错误情况
   - 如果消息包含 `error` 字段
   - 找到当前 running 的步骤
   - 更新该步骤为 'failed'
@@ -120,13 +120,13 @@
 
 ## 6. 错误处理
 
-- [ ] 6.1 添加 try-catch 包裹关键操作
+- [x] 6.1 添加 try-catch 包裹关键操作
   - 在 `submitAiPrompt` 中包裹所有关键操作
   - 捕获错误时更新步骤状态为 'failed'
   - 显示错误消息并停止后续步骤
   - 验收标准：任何错误都有清晰的反馈
 
-- [ ] 6.2 实现 showErrorInSteps 方法
+- [x] 6.2 实现 showErrorInSteps 方法
   - 创建 `showErrorInSteps(stepId: string, message: string)` 方法
   - 在进度对话框中显示错误信息
   - 提供"关闭"按钮
@@ -183,13 +183,13 @@
 
 ## 9. 代码审查和清理
 
-- [ ] 9.1 代码风格检查
+- [x] 9.1 代码风格检查
   - 运行 `npm run lint` 检查代码
   - 运行 `npm run lint:fix` 自动修复
   - 确保无新的 ESLint 错误
   - 验收标准：ESLint 无错误
 
-- [ ] 9.2 添加注释
+- [x] 9.2 添加注释
   - 为关键方法添加 JSDoc 注释
   - 解释微任务调度的原理
   - 说明状态流转逻辑

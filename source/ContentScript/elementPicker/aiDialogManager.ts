@@ -144,6 +144,13 @@ export class AiDialogManager {
 
   /**
    * 生成进度步骤列表
+   *
+   * 根据指令类型动态生成不同的步骤列表:
+   * - 明确指令: 3 个步骤(提取元素 → AI 思考 → 应用修改)
+   * - 模糊指令: 6 个步骤(提取元素 → 父元素 → 兄弟元素 → 页面布局 → AI 思考 → 应用修改)
+   *
+   * @param needsDeepAnalysis - 是否需要深度分析(由 isFuzzyPrompt() 决定)
+   * @returns 进度步骤数组
    */
   generateSteps(needsDeepAnalysis: boolean): ProgressStep[] {
     if (needsDeepAnalysis) {
@@ -184,6 +191,19 @@ export class AiDialogManager {
 
   /**
    * 显示进度步骤列表
+   *
+   * 替换 AI 对话框内容,显示步骤列表:
+   * - 使用 innerHTML 替换内容(保持对话框位置和样式)
+   * - 使用内联样式确保在所有页面正常显示
+   * - spinner 动画(@keyframes spin)用于进行中的步骤
+   *
+   * 样式规范:
+   * - 已完成: 绿色(#4caf50),半透明(opacity: 0.7)
+   * - 进行中: 蓝色(#2196F3),加粗(font-weight: 500),spinner 动画
+   * - 待处理: 灰色(#888)
+   * - 失败: 红色(#f44336)
+   *
+   * @param steps - 进度步骤数组
    */
   showProgressSteps(steps: ProgressStep[]): void {
     if (!this.aiDialog) return;
@@ -250,6 +270,13 @@ export class AiDialogManager {
 
   /**
    * 更新进度步骤状态
+   *
+   * 精确更新特定步骤的状态,避免重新渲染整个列表:
+   * - 使用 querySelector('[data-step="..."]') 精确定位步骤元素
+   * - 只更新图标文本和状态类,不改变 DOM 结构
+   * - 支持 partial update,只更新变化的步骤
+   *
+   * @param steps - 进度步骤数组(包含最新状态)
    */
   updateProgressSteps(steps: ProgressStep[]): void {
     if (!this.aiDialog) return;
@@ -595,6 +622,45 @@ export class AiDialogManager {
         saveBtn.textContent = '保存失败';
         saveBtn.style.background = '#f44336';
         break;
+    }
+  }
+
+  /**
+   * 获取当前进度步骤
+   */
+  getProgressSteps(): ProgressStep[] {
+    return this.progressSteps;
+  }
+
+  /**
+   * 更新指定步骤的状态
+   */
+  updateStepStatus(stepId: string, status: ProgressStepStatus): void {
+    const step = this.progressSteps.find((s) => s.id === stepId);
+    if (step) {
+      step.status = status;
+      this.updateProgressSteps(this.progressSteps);
+    }
+  }
+
+  /**
+   * 完成当前正在运行的步骤并开始下一步
+   */
+  completeCurrentStepAndStartNext(): void {
+    const runningIndex = this.progressSteps.findIndex(
+      (s) => s.status === 'running'
+    );
+    if (runningIndex !== -1) {
+      // 完成当前步骤
+      this.progressSteps[runningIndex]!.status = 'completed';
+
+      // 开始下一步
+      const nextIndex = runningIndex + 1;
+      if (nextIndex < this.progressSteps.length) {
+        this.progressSteps[nextIndex]!.status = 'running';
+      }
+
+      this.updateProgressSteps(this.progressSteps);
     }
   }
 }

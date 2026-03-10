@@ -297,6 +297,16 @@ class ElementPicker {
 
   /**
    * 提交 AI 提示词
+   *
+   * 使用微任务调度机制确保浏览器有机会更新 UI:
+   * - await Promise.resolve() 创建微任务,让浏览器在下一个事件循环前更新 DOM
+   * - 在每个操作前后插入微任务,确保用户看到进度变化
+   * - 开销 <5ms,用户体验提升明显
+   *
+   * 步骤状态流转:
+   * - pending → running → completed
+   * -              ↓
+   * -            failed
    */
   private async submitAiPrompt(): Promise<void> {
     const prompt = this.aiDialogManager.dialogInput?.value || '';
@@ -305,6 +315,7 @@ class ElementPicker {
       return;
     }
 
+    // 防止重复提交
     if (this.isSubmitting) {
       console.warn('[ElementPicker] 正在提交中，忽略重复请求');
       return;
@@ -314,13 +325,16 @@ class ElementPicker {
 
     console.log('[ElementPicker] AI Prompt:', prompt);
 
+    // 根据指令类型生成步骤列表
     const needsDeepAnalysis = this.infoExtractor.isFuzzyPrompt(prompt);
     console.log('[ElementPicker] 是否需要深度分析:', needsDeepAnalysis);
 
     const steps = this.aiDialogManager.generateSteps(needsDeepAnalysis);
 
+    // 立即显示步骤列表(<5ms)
     this.aiDialogManager.showProgressSteps(steps);
 
+    // 微任务:让浏览器有机会渲染 UI
     await Promise.resolve();
 
     if (!steps[0]) return;
@@ -460,25 +474,62 @@ class ElementPicker {
       return;
     }
 
+    // 任务 5.1: 收到 APPLY_OPERATIONS 消息时更新步骤状态
+    // 更新"AI 正在思考..."步骤为完成
+    const steps = this.aiDialogManager.getProgressSteps();
+    const aiStep = steps.find((s) => s.id === 'ai');
+    if (aiStep && aiStep.status === 'running') {
+      aiStep.status = 'completed';
+    }
+
+    // 更新"应用修改"步骤为进行中
+    const applyStep = steps.find((s) => s.id === 'apply');
+    if (applyStep) {
+      applyStep.status = 'running';
+    }
+    this.aiDialogManager.updateProgressSteps(steps);
+
     try {
       const executor = new OperationExecutor();
       const result = await executor.execute(this.selectedElement, operations);
 
       console.log('[ElementPicker] 操作执行结果:', result);
 
+      // 任务 5.2: 处理操作执行结果
       if (result.failedOperations.length === 0) {
+        // 所有操作成功,完成"应用修改"步骤
+        if (applyStep) {
+          applyStep.status = 'completed';
+          this.aiDialogManager.updateProgressSteps(steps);
+        }
         this.aiDialogManager.showSuccess();
       } else if (result.successfulOperations.length === 0) {
+        // 所有操作失败
         const error = result.failedOperations[0]?.error || '操作执行失败';
+        // 任务 5.3: 处理错误情况
+        if (applyStep) {
+          applyStep.status = 'failed';
+          this.aiDialogManager.updateProgressSteps(steps);
+        }
         this.aiDialogManager.showError(error);
       } else {
+        // 部分操作成功
         const failedCount = result.failedOperations.length;
+        if (applyStep) {
+          applyStep.status = 'completed';
+          this.aiDialogManager.updateProgressSteps(steps);
+        }
         this.aiDialogManager.showSuccess();
         console.warn(`[ElementPicker] ${failedCount} 个操作失败，已跳过`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       console.error('[ElementPicker] 执行操作失败:', errorMessage);
+      // 任务 5.3: 处理错误情况
+      if (applyStep) {
+        applyStep.status = 'failed';
+        this.aiDialogManager.updateProgressSteps(steps);
+      }
       this.aiDialogManager.showError(errorMessage);
     }
 
