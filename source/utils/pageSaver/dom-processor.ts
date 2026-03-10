@@ -83,8 +83,8 @@ export class DOMProcessor {
     // 查找所有可能包含 Shadow DOM 的元素
     const allElements = doc.querySelectorAll('*');
 
-    allElements.forEach((element) => {
-      const shadowRoot = (element as any).shadowRoot;
+    allElements.forEach((element: Element) => {
+      const shadowRoot = element.shadowRoot;
 
       if (shadowRoot) {
         // 序列化 Shadow Root 内容

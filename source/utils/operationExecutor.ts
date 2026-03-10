@@ -19,6 +19,158 @@ import type {
 } from '../types/operations';
 
 /**
+ * 验证器工具类
+ */
+class Validator {
+  // CSS属性白名单
+  private static readonly CSS_WHITELIST = new Set([
+    'color',
+    'backgroundColor',
+    'background',
+    'fontSize',
+    'fontWeight',
+    'fontStyle',
+    'fontFamily',
+    'padding',
+    'paddingTop',
+    'paddingBottom',
+    'paddingLeft',
+    'paddingRight',
+    'margin',
+    'marginTop',
+    'marginBottom',
+    'marginLeft',
+    'marginRight',
+    'border',
+    'borderTop',
+    'borderBottom',
+    'borderLeft',
+    'borderRight',
+    'borderRadius',
+    'borderWidth',
+    'borderColor',
+    'borderStyle',
+    'width',
+    'height',
+    'minWidth',
+    'minHeight',
+    'maxWidth',
+    'maxHeight',
+    'display',
+    'visibility',
+    'opacity',
+    'position',
+    'top',
+    'bottom',
+    'left',
+    'right',
+    'zIndex',
+    'overflow',
+    'textAlign',
+    'lineHeight',
+    'letterSpacing',
+    'textDecoration',
+    'cursor',
+    'boxShadow',
+    'transform',
+    'transition',
+  ]);
+
+  // HTML属性白名单
+  private static readonly ATTR_WHITELIST = new Set([
+    'id',
+    'class',
+    'title',
+    'alt',
+    'src',
+    'href',
+    'target',
+    'type',
+    'name',
+    'value',
+    'placeholder',
+    'disabled',
+    'readonly',
+    'checked',
+    'selected',
+    'required',
+    'min',
+    'max',
+    'step',
+    'pattern',
+    'maxlength',
+    'rows',
+    'cols',
+  ]);
+
+  // 危险模式黑名单
+  private static readonly DANGEROUS_PATTERNS = [
+    /expression\(/i,
+    /javascript:/i,
+    /vbscript:/i,
+    /data:\s*text\/html/i,
+  ];
+
+  /**
+   * 检查CSS属性是否有效
+   */
+  static isValidCSSProperty(prop: string): boolean {
+    return this.CSS_WHITELIST.has(prop);
+  }
+
+  /**
+   * 检查类名是否有效
+   */
+  static isValidClassName(className: string): boolean {
+    const classRegex = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
+    return classRegex.test(className);
+  }
+
+  /**
+   * 检查HTML属性是否有效
+   */
+  static isValidHTMLAttribute(attr: string): boolean {
+    return this.ATTR_WHITELIST.has(attr);
+  }
+
+  /**
+   * 检查是否是事件属性
+   */
+  static isEventAttribute(attr: string): boolean {
+    return attr.startsWith('on');
+  }
+
+  /**
+   * 检查是否包含危险模式
+   */
+  static containsDangerousPatterns(value: string): boolean {
+    return this.DANGEROUS_PATTERNS.some((pattern) => pattern.test(value));
+  }
+
+  /**
+   * 检查HTML是否安全
+   */
+  static isValidHTML(html: string): boolean {
+    // 检测script标签
+    if (html.toLowerCase().includes('<script')) {
+      return false;
+    }
+
+    // 检测事件处理器
+    if (/on\w+\s*=/.test(html)) {
+      return false;
+    }
+
+    // 检测javascript:协议
+    if (/javascript:/i.test(html)) {
+      return false;
+    }
+
+    return true;
+  }
+}
+
+/**
  * 操作执行器类
  */
 export class OperationExecutor {
@@ -412,157 +564,5 @@ export class OperationExecutor {
     } else {
       console.warn(`未找到选择器匹配的元素: ${operation.selector}`);
     }
-  }
-}
-
-/**
- * 验证器工具类
- */
-class Validator {
-  // CSS属性白名单
-  private static readonly CSS_WHITELIST = new Set([
-    'color',
-    'backgroundColor',
-    'background',
-    'fontSize',
-    'fontWeight',
-    'fontStyle',
-    'fontFamily',
-    'padding',
-    'paddingTop',
-    'paddingBottom',
-    'paddingLeft',
-    'paddingRight',
-    'margin',
-    'marginTop',
-    'marginBottom',
-    'marginLeft',
-    'marginRight',
-    'border',
-    'borderTop',
-    'borderBottom',
-    'borderLeft',
-    'borderRight',
-    'borderRadius',
-    'borderWidth',
-    'borderColor',
-    'borderStyle',
-    'width',
-    'height',
-    'minWidth',
-    'minHeight',
-    'maxWidth',
-    'maxHeight',
-    'display',
-    'visibility',
-    'opacity',
-    'position',
-    'top',
-    'bottom',
-    'left',
-    'right',
-    'zIndex',
-    'overflow',
-    'textAlign',
-    'lineHeight',
-    'letterSpacing',
-    'textDecoration',
-    'cursor',
-    'boxShadow',
-    'transform',
-    'transition',
-  ]);
-
-  // HTML属性白名单
-  private static readonly ATTR_WHITELIST = new Set([
-    'id',
-    'class',
-    'title',
-    'alt',
-    'src',
-    'href',
-    'target',
-    'type',
-    'name',
-    'value',
-    'placeholder',
-    'disabled',
-    'readonly',
-    'checked',
-    'selected',
-    'required',
-    'min',
-    'max',
-    'step',
-    'pattern',
-    'maxlength',
-    'rows',
-    'cols',
-  ]);
-
-  // 危险模式黑名单
-  private static readonly DANGEROUS_PATTERNS = [
-    /expression\(/i,
-    /javascript:/i,
-    /vbscript:/i,
-    /data:\s*text\/html/i,
-  ];
-
-  /**
-   * 检查CSS属性是否有效
-   */
-  static isValidCSSProperty(prop: string): boolean {
-    return this.CSS_WHITELIST.has(prop);
-  }
-
-  /**
-   * 检查类名是否有效
-   */
-  static isValidClassName(className: string): boolean {
-    const classRegex = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
-    return classRegex.test(className);
-  }
-
-  /**
-   * 检查HTML属性是否有效
-   */
-  static isValidHTMLAttribute(attr: string): boolean {
-    return this.ATTR_WHITELIST.has(attr);
-  }
-
-  /**
-   * 检查是否是事件属性
-   */
-  static isEventAttribute(attr: string): boolean {
-    return attr.startsWith('on');
-  }
-
-  /**
-   * 检查是否包含危险模式
-   */
-  static containsDangerousPatterns(value: string): boolean {
-    return this.DANGEROUS_PATTERNS.some((pattern) => pattern.test(value));
-  }
-
-  /**
-   * 检查HTML是否安全
-   */
-  static isValidHTML(html: string): boolean {
-    // 检测script标签
-    if (html.toLowerCase().includes('<script')) {
-      return false;
-    }
-
-    // 检测事件处理器
-    if (/on\w+\s*=/.test(html)) {
-      return false;
-    }
-
-    // 检测javascript:协议
-    if (/javascript:/i.test(html)) {
-      return false;
-    }
-
-    return true;
   }
 }

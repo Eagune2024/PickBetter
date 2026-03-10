@@ -17,6 +17,37 @@ export interface ModificationRequest {
 }
 
 /**
+ * OpenAI/Z.ai/自定义API 响应格式
+ */
+interface OpenAIStyleResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+  error?: {
+    message?: string;
+  };
+}
+
+/**
+ * Claude API 响应格式
+ */
+interface ClaudeResponse {
+  content?: Array<{
+    text?: string;
+  }>;
+  error?: {
+    message?: string;
+  };
+}
+
+/**
+ * 统一的 API 响应类型
+ */
+type APIResponse = OpenAIStyleResponse | ClaudeResponse;
+
+/**
  * AI Client类
  */
 export class AIClient {
@@ -38,7 +69,7 @@ export class AIClient {
       const prompt = this.buildPrompt(request);
 
       // 根据provider调用不同的API
-      let response: any;
+      let response: APIResponse;
       switch (this.config.provider) {
         case 'openai':
           response = await this.callOpenAI(prompt);
@@ -224,7 +255,7 @@ ${elementInfo.outerHTML}
    * @param prompt - 发送给AI的prompt
    * @returns API响应
    */
-  private async callOpenAI(prompt: string): Promise<any> {
+  private async callOpenAI(prompt: string): Promise<OpenAIStyleResponse> {
     const baseUrl = this.config.baseUrl || 'https://api.openai.com/v1';
     const endpoint = `${baseUrl}/chat/completions`;
 
@@ -266,7 +297,7 @@ ${elementInfo.outerHTML}
    * @param prompt - 发送给AI的prompt
    * @returns API响应
    */
-  private async callClaude(prompt: string): Promise<any> {
+  private async callClaude(prompt: string): Promise<ClaudeResponse> {
     const baseUrl = this.config.baseUrl || 'https://api.anthropic.com/v1';
     const endpoint = `${baseUrl}/messages`;
 
@@ -309,7 +340,7 @@ ${elementInfo.outerHTML}
    * @param prompt - 发送给AI的prompt
    * @returns API响应
    */
-  private async callZAI(prompt: string): Promise<any> {
+  private async callZAI(prompt: string): Promise<OpenAIStyleResponse> {
     const baseUrl =
       this.config.serviceSite || 'https://api.z.ai/api/coding/paas/v4';
     const endpoint = `${baseUrl}/chat/completions`;
@@ -352,7 +383,7 @@ ${elementInfo.outerHTML}
    * @param prompt - 发送给AI的prompt
    * @returns API响应
    */
-  private async callCustom(prompt: string): Promise<any> {
+  private async callCustom(prompt: string): Promise<OpenAIStyleResponse> {
     if (!this.config.baseUrl) {
       throw new Error('自定义API需要配置baseUrl');
     }
@@ -398,7 +429,7 @@ ${elementInfo.outerHTML}
    * @param provider - AI provider
    * @returns 解析后的操作数组
    */
-  private parseResponse(response: any, provider: string): AIResponse {
+  private parseResponse(response: APIResponse, provider: string): AIResponse {
     try {
       let content: string;
 

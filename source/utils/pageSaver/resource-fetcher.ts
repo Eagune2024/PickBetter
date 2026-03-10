@@ -157,7 +157,7 @@ export class ResourceFetcher {
   private blobToBase64(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = (): void => {
         resolve(reader.result as string);
       };
       reader.onerror = reject;
@@ -235,7 +235,7 @@ export async function fetchResource(
       // 转换为 Base64
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => {
+        reader.onloadend = (): void => {
           resolve(reader.result as string);
         };
         reader.onerror = reject;
